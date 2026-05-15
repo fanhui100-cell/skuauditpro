@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>联系我们 | SKUProfit</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">
+        <span class="brand-mark">SP</span>
+        <span>SKUProfit</span>
+      </a>
+      <nav class="nav-links">
+        <a href="/">首页</a>
+        <a href="cases.html">案例</a>
+        <a href="sample-report.html">报告样张</a>
+        <a href="login.html">登录</a>
+      </nav>
+    </header>
+
+    <main class="contact-page">
+      <section class="section split">
+        <div>
+          <p class="eyebrow">Contact</p>
+          <h1>预约一次 SKU 利润体检。</h1>
+          <p>
+            如果你正在做 TikTok Shop 美国、Shopify 独立站、Amazon 或 Walmart，可以先提交 3 个 SKU 的基础信息，我们会帮你判断是否存在隐藏亏损。
+          </p>
+          <div class="contact-methods">
+            <article>
+              <strong>邮箱</strong>
+              <span>support@skuprofit.example</span>
+            </article>
+            <article>
+              <strong>服务时间</strong>
+              <span>周一至周五 10:00-18:00</span>
+            </article>
+            <article>
+              <strong>建议准备</strong>
+              <span>售价、采购价、物流、佣金、广告、退货率</span>
+            </article>
+          </div>
+        </div>
+        <form class="lead-form" id="contact-form">
+          <label>
+            你的称呼
+            <input id="contact-name" type="text" placeholder="例如：陈先生" required />
+          </label>
+          <label>
+            联系方式
+            <input id="contact-detail" type="text" placeholder="邮箱 / 微信 / WhatsApp" required />
+          </label>
+          <label>
+            平台
+            <select id="contact-platform">
+              <option>TikTok Shop 美国</option>
+              <option>Shopify 独立站</option>
+              <option>Amazon</option>
+              <option>Walmart</option>
+              <option>其他</option>
+            </select>
+          </label>
+          <label>
+            你想解决什么问题？
+            <textarea id="contact-message" rows="5" placeholder="例如：达人佣金给到 20% 后，不知道这个品是否还赚钱"></textarea>
+          </label>
+          <button class="button primary full" type="submit">提交预约</button>
+          <p class="form-note" id="contact-note">提交后会进入管理后台线索列表。</p>
+        </form>
+      </section>
+    </main>
+    <script src="contact.js"></script>
+  </body>
+</html>

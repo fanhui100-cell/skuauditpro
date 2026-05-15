@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SKUProfit | 跨境 SKU 利润体检</title>
+    <meta
+      name="description"
+      content="帮跨境卖家计算平台费、达人佣金、物流、关税、退货后的真实 SKU 利润。"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="SKUProfit 首页">
+        <span class="brand-mark">SP</span>
+        <span>SKUProfit</span>
+      </a>
+      <nav class="nav-links" aria-label="主导航">
+        <a href="#calculator">利润计算器</a>
+        <a href="#bulk">批量体检</a>
+        <a href="#sample">样例报告</a>
+        <a href="cases.html">案例</a>
+        <a href="#pricing">定价</a>
+        <a href="#plan">项目方案</a>
+        <a href="/login">登录</a>
+        <a href="/language?lang=en&next=/en.html">EN</a>
+        <a class="nav-cta" href="#lead">免费测 3 个 SKU</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">TikTok Shop / Shopify / Amazon 卖家利润体检</p>
+          <h1 id="hero-title">别只看 GMV，先找出正在偷偷亏钱的 SKU。</h1>
+          <p class="hero-subtitle">
+            把售价、采购、物流、关税、平台费、达人佣金、广告和退货全部算进去，立即看到真实净利、保本售价、佣金上限和风险等级。
+          </p>
+          <div class="hero-tags" aria-label="核心卖点">
+            <span>不需要店铺后台</span>
+            <span>支持批量 CSV</span>
+            <span>适合先卖 ¥299 体检服务</span>
+          </div>
+          <div class="hero-actions">
+            <a class="button primary" href="#calculator">立即测一个 SKU</a>
+            <a class="button secondary" href="/login">登录后台</a>
+            <a class="button secondary" href="sample-report.html">查看报告样张</a>
+          </div>
+          <dl class="hero-proof">
+            <div>
+              <dt>3 分钟</dt>
+              <dd>完成单个 SKU 体检</dd>
+            </div>
+            <div>
+              <dt>12 项</dt>
+              <dd>常见隐藏成本</dd>
+            </div>
+            <div>
+              <dt>0 后台权限</dt>
+              <dd>先用基础数据验证</dd>
+            </div>
+          </dl>
+        </div>
+
+        <section class="calculator-panel" id="calculator" aria-labelledby="calculator-title">
+          <div class="section-heading compact">
+            <p class="eyebrow">MVP 核心工具</p>
+            <h2 id="calculator-title">SKU 利润计算器</h2>
+          </div>
+
+          <form class="calculator-form" id="profit-form">
+            <div class="form-grid">
+              <label>
+                平台
+                <select id="platform">
+                  <option value="TikTok Shop">TikTok Shop</option>
+                  <option value="Shopify">Shopify</option>
+                  <option value="Amazon">Amazon</option>
+                  <option value="Walmart">Walmart</option>
+                  <option value="其他平台">其他平台</option>
+                </select>
+              </label>
+              <label>
+                SKU 名称
+                <input id="sku-name" type="text" value="便携式补光灯" />
+              </label>
+              <label>
+                售价（美元）
+                <input id="price" type="number" min="0" step="0.01" value="24.99" />
+              </label>
+              <label>
+                采购价（美元）
+                <input id="cost" type="number" min="0" step="0.01" value="6.2" />
+              </label>
+              <label>
+                国际物流/履约（美元）
+                <input id="shipping" type="number" min="0" step="0.01" value="4.1" />
+              </label>
+              <label>
+                预估关税/进口成本（美元）
+                <input id="duty" type="number" min="0" step="0.01" value="1.4" />
+              </label>
+              <label>
+                平台费率（%）
+                <input id="platform-rate" type="number" min="0" step="0.1" value="6" />
+              </label>
+              <label>
+                支付/交易费率（%）
+                <input id="payment-rate" type="number" min="0" step="0.1" value="2.9" />
+              </label>
+              <label>
+                达人佣金率（%）
+                <input id="affiliate-rate" type="number" min="0" step="0.1" value="15" />
+              </label>
+              <label>
+                单件广告成本（美元）
+                <input id="ad-cost" type="number" min="0" step="0.01" value="2.5" />
+              </label>
+              <label>
+                退货率（%）
+                <input id="return-rate" type="number" min="0" step="0.1" value="8" />
+              </label>
+              <label>
+                单件其他成本（美元）
+                <input id="other-cost" type="number" min="0" step="0.01" value="0.6" />
+              </label>
+            </div>
+            <button class="button primary full" type="submit">生成利润体检</button>
+          </form>
+
+          <div class="result-panel" aria-live="polite">
+            <div class="risk-row">
+              <span class="risk-badge" id="risk-badge">健康</span>
+              <span id="result-summary">这个 SKU 当前仍有投放空间。</span>
+            </div>
+            <div class="metric-grid">
+              <div>
+                <span>单件净利润</span>
+                <strong id="net-profit">$0.00</strong>
+              </div>
+              <div>
+                <span>净利率</span>
+                <strong id="margin">0%</strong>
+              </div>
+              <div>
+                <span>保本售价</span>
+                <strong id="break-even">$0.00</strong>
+              </div>
+              <div>
+                <span>最大达人佣金</span>
+                <strong id="max-affiliate">0%</strong>
+              </div>
+            </div>
+            <div class="advice-box">
+              <h3>优化建议</h3>
+              <ul id="advice-list"></ul>
+            </div>
+            <div class="result-actions">
+              <button class="button secondary" id="copy-single-report" type="button">复制单 SKU 报告</button>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="signal-strip" aria-label="核心业务信号">
+        <div>
+          <strong>隐藏亏损品</strong>
+          <span>找出 GMV 很好但净利为负的商品</span>
+        </div>
+        <div>
+          <strong>保本售价</strong>
+          <span>反推最低可卖价格和涨价空间</span>
+        </div>
+        <div>
+          <strong>佣金上限</strong>
+          <span>判断达人佣金和广告 CPA 能给到多少</span>
+        </div>
+        <div>
+          <strong>付费转化</strong>
+          <span>免费测 3 个 SKU，再卖 20 SKU 体检</span>
+        </div>
+      </section>
+
+      <section class="section" id="bulk" aria-labelledby="bulk-title">
+        <div class="section-heading">
+          <p class="eyebrow">付费交付核心</p>
+          <h2 id="bulk-title">批量 SKU 利润体检：把隐藏亏损品排出来。</h2>
+          <p>
+            粘贴 CSV 数据或使用示例数据，系统会批量计算每个商品的净利润、净利率、保本售价和风险等级。这个模块可以直接用于 ¥299 的 20 个商品体检服务。
+          </p>
+        </div>
+        <div class="bulk-layout">
+          <div class="bulk-input">
+            <div class="bulk-toolbar">
+              <button class="button secondary" id="load-demo" type="button">载入示例数据</button>
+              <button class="button ghost" id="clear-bulk" type="button">清空</button>
+            </div>
+            <label>
+              CSV 数据
+              <textarea id="bulk-csv" rows="12" spellcheck="false" placeholder="sku,platform,price,cost,shipping,duty,platformRate,paymentRate,affiliateRate,adCost,returnRate,otherCost"></textarea>
+            </label>
+            <p class="form-note">
+              表头必须包含：sku, platform, price, cost, shipping, duty, platformRate, paymentRate, affiliateRate, adCost, returnRate, otherCost
+            </p>
+            <button class="button primary full" id="run-bulk" type="button">生成批量体检报告</button>
+          </div>
+          <div class="bulk-summary">
+            <div class="metric-grid compact-metrics">
+              <div>
+                <span>SKU 数量</span>
+                <strong id="bulk-count">0</strong>
+              </div>
+              <div>
+                <span>亏损 SKU</span>
+                <strong id="bulk-loss">0</strong>
+              </div>
+              <div>
+                <span>平均净利率</span>
+                <strong id="bulk-margin">0%</strong>
+              </div>
+              <div>
+                <span>建议优先处理</span>
+                <strong id="bulk-priority">0</strong>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>平台</th>
+                    <th>净利润</th>
+                    <th>净利率</th>
+                    <th>保本售价</th>
+                    <th>风险</th>
+                  </tr>
+                </thead>
+                <tbody id="bulk-results">
+                  <tr>
+                    <td colspan="6">暂无数据，先载入示例或粘贴 CSV。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="result-actions">
+              <button class="button secondary" id="export-bulk" type="button">导出体检 CSV</button>
+              <button class="button secondary" id="print-report" type="button">打印/保存 PDF 报告</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="sample" aria-labelledby="sample-title">
+        <div class="section-heading">
+          <p class="eyebrow">让用户愿意留资的展示物</p>
+          <h2 id="sample-title">样例报告：卖家真正想看的不是图表，是决策。</h2>
+        </div>
+        <div class="report-layout">
+          <article class="report-card">
+            <div class="report-topline">
+              <span class="status-dot red"></span>
+              <strong>SKU-A 低价饰品套装</strong>
+              <span>风险：高</span>
+            </div>
+            <dl class="report-metrics">
+              <div><dt>售价</dt><dd>$12.99</dd></div>
+              <div><dt>净利润</dt><dd>-$0.34</dd></div>
+              <div><dt>问题</dt><dd>固定物流成本过高</dd></div>
+            </dl>
+            <p>建议：停止投放达人佣金超过 10% 的合作，测试 $15.99 价格带或改走组合装。</p>
+          </article>
+          <article class="report-card">
+            <div class="report-topline">
+              <span class="status-dot yellow"></span>
+              <strong>SKU-B 车载收纳盒</strong>
+              <span>风险：中</span>
+            </div>
+            <dl class="report-metrics">
+              <div><dt>售价</dt><dd>$28.90</dd></div>
+              <div><dt>净利润</dt><dd>$3.21</dd></div>
+              <div><dt>问题</dt><dd>退货率敏感</dd></div>
+            </dl>
+            <p>建议：优化详情页尺寸说明，把退货率从 12% 降到 7%，净利率可提升约 2.4 个点。</p>
+          </article>
+          <article class="report-card">
+            <div class="report-topline">
+              <span class="status-dot green"></span>
+              <strong>SKU-C LED 桌面灯</strong>
+              <span>风险：低</span>
+            </div>
+            <dl class="report-metrics">
+              <div><dt>售价</dt><dd>$39.99</dd></div>
+              <div><dt>净利润</dt><dd>$8.46</dd></div>
+              <div><dt>机会</dt><dd>可加大达人合作</dd></div>
+            </dl>
+            <p>建议：达人佣金可接受上限约 19%，优先做短视频测评和套装加购。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section trust" aria-labelledby="trust-title">
+        <div class="section-heading">
+          <p class="eyebrow">为什么可以放心先测</p>
+          <h2 id="trust-title">不拿后台权限，只看你主动提供的成本数据。</h2>
+        </div>
+        <div class="trust-grid">
+          <article>
+            <h3>无需店铺授权</h3>
+            <p>免费体检阶段不要求 TikTok Shop、Shopify、Amazon 后台权限，先用基础数据完成测算。</p>
+          </article>
+          <article>
+            <h3>结果可复核</h3>
+            <p>报告会拆分采购、物流、关税、佣金、广告、退货等成本项，方便你逐项核对。</p>
+          </article>
+          <article>
+            <h3>合规边界清楚</h3>
+            <p>利润和关税结果用于商业预判，不替代报关行、税务顾问或律师的专业意见。</p>
+          </article>
+        </div>
+        <div class="trust-actions">
+          <a class="button secondary" href="security.html">查看数据安全说明</a>
+          <a class="button secondary" href="cases.html">查看典型案例</a>
+        </div>
+      </section>
+
+      <section class="section split" id="lead" aria-labelledby="lead-title">
+        <div>
+          <p class="eyebrow">获客入口</p>
+          <h2 id="lead-title">免费测 3 个 SKU，拿第一批真实需求。</h2>
+          <p>
+            这个表单先不接支付，不要让用户上传敏感后台数据。第一阶段只收基础信息，你再手工跟进，快速验证他们是否愿意为完整报告付费。
+          </p>
+          <ul class="check-list">
+            <li>适合 TikTok Shop、Shopify、Amazon、Walmart 卖家</li>
+            <li>不需要店铺后台权限</li>
+            <li>先给 3 个 SKU 免费体检，再转付费报告</li>
+          </ul>
+        </div>
+        <form class="lead-form" id="lead-form">
+          <label>
+            你的称呼
+            <input id="lead-name" type="text" placeholder="例如：陈先生" required />
+          </label>
+          <label>
+            联系方式
+            <input id="lead-contact" type="text" placeholder="微信 / 邮箱 / WhatsApp" required />
+          </label>
+          <label>
+            主要平台
+            <select id="lead-platform">
+              <option>TikTok Shop 美国</option>
+              <option>Shopify 独立站</option>
+              <option>Amazon</option>
+              <option>Walmart</option>
+              <option>其他</option>
+            </select>
+          </label>
+          <label>
+            当前 SKU 数量
+            <input id="lead-skus" type="number" min="1" value="20" required />
+          </label>
+          <label>
+            最大困扰
+            <textarea id="lead-pain" rows="4" placeholder="例如：达人佣金和退货后利润算不清"></textarea>
+          </label>
+          <button class="button primary full" type="submit">提交体检需求</button>
+          <p class="form-note" id="lead-note">提交后会保存在当前浏览器，可在下方导出 CSV。</p>
+        </form>
+      </section>
+
+      <section class="section pricing" id="pricing" aria-labelledby="pricing-title">
+        <div class="section-heading">
+          <p class="eyebrow">商业化方案</p>
+          <h2 id="pricing-title">先卖利润体检服务，再升级成订阅工具。</h2>
+        </div>
+        <div class="pricing-grid">
+          <article class="price-card">
+            <p class="plan-name">免费入口</p>
+            <h3>测 3 个 SKU</h3>
+            <strong>¥0</strong>
+            <ul>
+              <li>单 SKU 真实利润</li>
+              <li>保本售价</li>
+              <li>风险等级</li>
+              <li>初步优化建议</li>
+            </ul>
+          </article>
+          <article class="price-card featured">
+            <p class="plan-name">首批成交</p>
+            <h3>20 SKU 体检</h3>
+            <strong>¥299</strong>
+            <ul>
+              <li>批量利润排序</li>
+              <li>隐藏亏损品清单</li>
+              <li>达人佣金上限</li>
+              <li>广告 CPA 上限</li>
+            </ul>
+          </article>
+          <article class="price-card">
+            <p class="plan-name">整店诊断</p>
+            <h3>50-100 SKU</h3>
+            <strong>¥999+</strong>
+            <ul>
+              <li>完整商品风险表</li>
+              <li>定价建议</li>
+              <li>物流/关税敏感性</li>
+              <li>一次复盘沟通</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section faq" aria-labelledby="faq-title">
+        <div class="section-heading">
+          <p class="eyebrow">常见问题</p>
+          <h2 id="faq-title">卖家最关心的几个问题。</h2>
+        </div>
+        <div class="faq-grid">
+          <details open>
+            <summary>需要我提供店铺后台账号吗？</summary>
+            <p>不需要。第一阶段只需要 SKU 售价、采购价、物流、平台费、达人佣金、广告成本、退货率等基础数据。</p>
+          </details>
+          <details>
+            <summary>关税和合规判断准确吗？</summary>
+            <p>我们提供商业测算和风险预判，不替代报关行、税务顾问或律师。最终申报和归类请以专业机构意见为准。</p>
+          </details>
+          <details>
+            <summary>适合哪些平台？</summary>
+            <p>优先适合 TikTok Shop 美国、Shopify 独立站、Amazon、Walmart 等跨境卖家。</p>
+          </details>
+          <details>
+            <summary>付费后怎么交付？</summary>
+            <p>20 SKU 体检通常在收到完整数据和付款确认后 2-5 个工作日内交付，可导出 CSV 或生成报告。</p>
+          </details>
+        </div>
+      </section>
+
+      <section class="section" id="plan" aria-labelledby="plan-title">
+        <div class="section-heading">
+          <p class="eyebrow">完整项目方案</p>
+          <h2 id="plan-title">从半人工服务开始，把重复流程产品化。</h2>
+        </div>
+        <div class="plan-grid">
+          <article>
+            <span class="step-index">01</span>
+            <h3>定位</h3>
+            <p>第一阶段只服务“面向美国市场的 TikTok Shop / Shopify 中国卖家”，主卖点是 SKU 真实利润体检。</p>
+          </article>
+          <article>
+            <span class="step-index">02</span>
+            <h3>MVP</h3>
+            <p>网站先提供单 SKU 计算器、免费 3 SKU 留资、样例报告、手工交付完整报告。</p>
+          </article>
+          <article>
+            <span class="step-index">03</span>
+            <h3>交付</h3>
+            <p>用表格和报告模板完成 20 SKU 诊断，输出隐藏亏损品、保本售价、佣金上限和投放建议。</p>
+          </article>
+          <article>
+            <span class="step-index">04</span>
+            <h3>获客</h3>
+            <p>通过卖家群、小红书内容、货代/海外仓/报关行合作、私信卖家拿第一批客户。</p>
+          </article>
+          <article>
+            <span class="step-index">05</span>
+            <h3>收费</h3>
+            <p>免费 3 SKU，¥299 测 20 SKU，¥999 整店诊断，后续升级为 ¥299-¥999/月订阅。</p>
+          </article>
+          <article>
+            <span class="step-index">06</span>
+            <h3>产品化</h3>
+            <p>当同类问题重复出现，再做批量上传、SKU 看板、政策提醒、合作服务商入口。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section final-cta" aria-labelledby="final-cta-title">
+        <div>
+          <p class="eyebrow">开始体检</p>
+          <h2 id="final-cta-title">先免费测 3 个 SKU，看看有没有隐藏亏损。</h2>
+          <p>不需要店铺后台权限，只要基础成本数据。我们会根据真实利润、保本售价和佣金上限给出初步判断。</p>
+        </div>
+        <a class="button primary" href="#lead">提交免费体检需求</a>
+      </section>
+    </main>
+
+    <footer class="site-footer full-footer">
+      <div>
+        <strong>SKUProfit</strong>
+        <p>利润和关税结果仅用于商业预判，不构成报关、税务或法律意见。</p>
+      </div>
+      <nav class="footer-links" aria-label="页脚导航">
+        <a href="privacy.html">隐私政策</a>
+        <a href="terms.html">服务条款</a>
+        <a href="refund.html">退款与交付</a>
+        <a href="security.html">数据安全</a>
+        <a href="contact.html">联系</a>
+        <a href="/language?lang=en&next=/en.html">English</a>
+        <a href="#top">返回顶部</a>
+      </nav>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

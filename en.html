@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SKUProfit | SKU Margin Audit for Cross-Border Sellers</title>
+    <meta
+      name="description"
+      content="Calculate true SKU profit after platform fees, affiliate commission, ads, logistics, duties and returns."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="SKUProfit home">
+        <span class="brand-mark">SP</span>
+        <span>SKUProfit</span>
+      </a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="#calculator">Calculator</a>
+        <a href="#bulk">Bulk Audit</a>
+        <a href="#sample">Sample Report</a>
+        <a href="cases.html">Cases</a>
+        <a href="#pricing">Pricing</a>
+        <a href="/login">Login</a>
+        <a href="/language?lang=zh&next=/index.html">中文</a>
+        <a class="nav-cta" href="#lead">Audit 3 SKUs Free</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">SKU profit audit for cross-border sellers</p>
+          <h1 id="hero-title">Find the SKUs that look good in GMV but quietly lose money.</h1>
+          <p class="hero-subtitle">
+            Add product cost, logistics, duties, platform fees, affiliate commission, ad spend and return loss. Get true net profit, break-even price, commission limit and risk level in minutes.
+          </p>
+          <div class="hero-tags" aria-label="Key benefits">
+            <span>No store access required</span>
+            <span>Bulk CSV supported</span>
+            <span>Built for TikTok Shop and Shopify sellers</span>
+          </div>
+          <div class="hero-actions">
+            <a class="button primary" href="#calculator">Audit One SKU</a>
+            <a class="button secondary" href="/login">Open Dashboard</a>
+            <a class="button secondary" href="sample-report.html">View Sample Report</a>
+          </div>
+          <dl class="hero-proof">
+            <div>
+              <dt>3 min</dt>
+              <dd>single-SKU audit</dd>
+            </div>
+            <div>
+              <dt>12 costs</dt>
+              <dd>common hidden fees</dd>
+            </div>
+            <div>
+              <dt>0 access</dt>
+              <dd>no store login needed</dd>
+            </div>
+          </dl>
+        </div>
+
+        <section class="calculator-panel" id="calculator" aria-labelledby="calculator-title">
+          <div class="section-heading compact">
+            <p class="eyebrow">Free tool</p>
+            <h2 id="calculator-title">SKU Profit Calculator</h2>
+          </div>
+
+          <form class="calculator-form" id="profit-form">
+            <div class="form-grid">
+              <label>
+                Platform
+                <select id="platform">
+                  <option value="TikTok Shop">TikTok Shop</option>
+                  <option value="Shopify">Shopify</option>
+                  <option value="Amazon">Amazon</option>
+                  <option value="Walmart">Walmart</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+              <label>
+                SKU name
+                <input id="sku-name" type="text" value="Portable fill light" />
+              </label>
+              <label>
+                Selling price (USD)
+                <input id="price" type="number" min="0" step="0.01" value="24.99" />
+              </label>
+              <label>
+                Product cost (USD)
+                <input id="cost" type="number" min="0" step="0.01" value="6.2" />
+              </label>
+              <label>
+                Logistics / fulfillment (USD)
+                <input id="shipping" type="number" min="0" step="0.01" value="4.1" />
+              </label>
+              <label>
+                Duties / import cost (USD)
+                <input id="duty" type="number" min="0" step="0.01" value="1.4" />
+              </label>
+              <label>
+                Platform fee (%)
+                <input id="platform-rate" type="number" min="0" step="0.1" value="6" />
+              </label>
+              <label>
+                Payment fee (%)
+                <input id="payment-rate" type="number" min="0" step="0.1" value="2.9" />
+              </label>
+              <label>
+                Affiliate commission (%)
+                <input id="affiliate-rate" type="number" min="0" step="0.1" value="15" />
+              </label>
+              <label>
+                Ad cost per unit (USD)
+                <input id="ad-cost" type="number" min="0" step="0.01" value="2.5" />
+              </label>
+              <label>
+                Return rate (%)
+                <input id="return-rate" type="number" min="0" step="0.1" value="8" />
+              </label>
+              <label>
+                Other cost per unit (USD)
+                <input id="other-cost" type="number" min="0" step="0.01" value="0.6" />
+              </label>
+            </div>
+            <button class="button primary full" type="submit">Generate Audit</button>
+          </form>
+
+          <div class="result-panel" aria-live="polite">
+            <div class="risk-row">
+              <span class="risk-badge" id="risk-badge">Healthy</span>
+              <span id="result-summary">This SKU still has room to scale.</span>
+            </div>
+            <div class="metric-grid">
+              <div>
+                <span>Net profit</span>
+                <strong id="net-profit">$0.00</strong>
+              </div>
+              <div>
+                <span>Margin</span>
+                <strong id="margin">0%</strong>
+              </div>
+              <div>
+                <span>Break-even price</span>
+                <strong id="break-even">$0.00</strong>
+              </div>
+              <div>
+                <span>Max commission</span>
+                <strong id="max-affiliate">0%</strong>
+              </div>
+            </div>
+            <div class="advice-box">
+              <h3>Recommendations</h3>
+              <ul id="advice-list"></ul>
+            </div>
+            <div class="result-actions">
+              <button class="button secondary" id="copy-single-report" type="button">Copy SKU Report</button>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="signal-strip" aria-label="Business signals">
+        <div>
+          <strong>Hidden losses</strong>
+          <span>Spot products that sell well but lose money</span>
+        </div>
+        <div>
+          <strong>Break-even price</strong>
+          <span>Know the lowest viable selling price</span>
+        </div>
+        <div>
+          <strong>Commission limit</strong>
+          <span>Set affiliate and ad spend ceilings</span>
+        </div>
+        <div>
+          <strong>Paid audit funnel</strong>
+          <span>Free 3-SKU audit, then sell a 20-SKU report</span>
+        </div>
+      </section>
+
+      <section class="section" id="bulk" aria-labelledby="bulk-title">
+        <div class="section-heading">
+          <p class="eyebrow">Paid delivery core</p>
+          <h2 id="bulk-title">Bulk SKU audit: rank risk before you scale.</h2>
+          <p>
+            Paste CSV data or load sample data. SKUProfit calculates net profit, margin, break-even price and risk level for each SKU.
+          </p>
+        </div>
+        <div class="bulk-layout">
+          <div class="bulk-input">
+            <div class="bulk-toolbar">
+              <button class="button secondary" id="load-demo" type="button">Load Sample Data</button>
+              <button class="button ghost" id="clear-bulk" type="button">Clear</button>
+            </div>
+            <label>
+              CSV data
+              <textarea id="bulk-csv" rows="12" spellcheck="false" placeholder="sku,platform,price,cost,shipping,duty,platformRate,paymentRate,affiliateRate,adCost,returnRate,otherCost"></textarea>
+            </label>
+            <p class="form-note">
+              Required headers: sku, platform, price, cost, shipping, duty, platformRate, paymentRate, affiliateRate, adCost, returnRate, otherCost
+            </p>
+            <button class="button primary full" id="run-bulk" type="button">Generate Bulk Report</button>
+          </div>
+          <div class="bulk-summary">
+            <div class="metric-grid compact-metrics">
+              <div>
+                <span>SKU count</span>
+                <strong id="bulk-count">0</strong>
+              </div>
+              <div>
+                <span>Loss-making</span>
+                <strong id="bulk-loss">0</strong>
+              </div>
+              <div>
+                <span>Avg margin</span>
+                <strong id="bulk-margin">0%</strong>
+              </div>
+              <div>
+                <span>Priority fixes</span>
+                <strong id="bulk-priority">0</strong>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Platform</th>
+                    <th>Net profit</th>
+                    <th>Margin</th>
+                    <th>Break-even</th>
+                    <th>Risk</th>
+                  </tr>
+                </thead>
+                <tbody id="bulk-results">
+                  <tr>
+                    <td colspan="6">No data yet. Load sample data or paste CSV.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="result-actions">
+              <button class="button secondary" id="export-bulk" type="button">Export CSV</button>
+              <button class="button secondary" id="print-report" type="button">Print / Save PDF</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="sample" aria-labelledby="sample-title">
+        <div class="section-heading">
+          <p class="eyebrow">Sample report</p>
+          <h2 id="sample-title">Sellers do not need another chart. They need a decision.</h2>
+        </div>
+        <div class="report-layout">
+          <article class="report-card">
+            <div class="report-topline">
+              <span class="status-dot red"></span>
+              <strong>SKU-A Low-price accessory set</strong>
+              <span>High risk</span>
+            </div>
+            <dl class="report-metrics">
+              <div><dt>Price</dt><dd>$12.99</dd></div>
+              <div><dt>Net profit</dt><dd>-$0.34</dd></div>
+              <div><dt>Issue</dt><dd>fulfillment cost</dd></div>
+            </dl>
+            <p>Recommendation: pause affiliate deals above 10%, test $15.99 pricing or bundle the product.</p>
+          </article>
+          <article class="report-card">
+            <div class="report-topline">
+              <span class="status-dot yellow"></span>
+              <strong>SKU-B Car organizer</strong>
+              <span>Medium risk</span>
+            </div>
+            <dl class="report-metrics">
+              <div><dt>Price</dt><dd>$28.90</dd></div>
+              <div><dt>Net profit</dt><dd>$3.21</dd></div>
+              <div><dt>Issue</dt><dd>return rate</dd></div>
+            </dl>
+            <p>Recommendation: improve size guidance and reduce return rate from 12% to 7% before scaling ads.</p>
+          </article>
+          <article class="report-card">
+            <div class="report-topline">
+              <span class="status-dot green"></span>
+              <strong>SKU-C LED desk lamp</strong>
+              <span>Low risk</span>
+            </div>
+            <dl class="report-metrics">
+              <div><dt>Price</dt><dd>$39.99</dd></div>
+              <div><dt>Net profit</dt><dd>$8.46</dd></div>
+              <div><dt>Opportunity</dt><dd>creator deals</dd></div>
+            </dl>
+            <p>Recommendation: keep creator commission under 19% and prioritize review-style short videos.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section trust" aria-labelledby="trust-title">
+        <div class="section-heading">
+          <p class="eyebrow">Trust</p>
+          <h2 id="trust-title">No store access required. Start with only the cost data you choose to share.</h2>
+        </div>
+        <div class="trust-grid">
+          <article>
+            <h3>No backend permission</h3>
+            <p>The free audit does not require TikTok Shop, Shopify or Amazon account access.</p>
+          </article>
+          <article>
+            <h3>Auditable math</h3>
+            <p>Reports break down product cost, logistics, duties, commission, ads and return loss.</p>
+          </article>
+          <article>
+            <h3>Clear compliance boundary</h3>
+            <p>Results are commercial estimates, not customs, tax or legal advice.</p>
+          </article>
+        </div>
+        <div class="trust-actions">
+          <a class="button secondary" href="security.html">Data Security</a>
+          <a class="button secondary" href="cases.html">View Cases</a>
+        </div>
+      </section>
+
+      <section class="section split" id="lead" aria-labelledby="lead-title">
+        <div>
+          <p class="eyebrow">Lead capture</p>
+          <h2 id="lead-title">Get a free 3-SKU audit.</h2>
+          <p>
+            No store login required. Send basic cost data and receive a short margin risk report.
+          </p>
+          <ul class="check-list">
+            <li>Built for TikTok Shop, Shopify, Amazon and Walmart sellers</li>
+            <li>No backend or store permission needed</li>
+            <li>Start with 3 SKUs, then upgrade to a full audit</li>
+          </ul>
+        </div>
+        <form class="lead-form" id="lead-form">
+          <label>
+            Name
+            <input id="lead-name" type="text" placeholder="Your name" required />
+          </label>
+          <label>
+            Contact
+            <input id="lead-contact" type="text" placeholder="Email / WhatsApp / WeChat" required />
+          </label>
+          <label>
+            Main platform
+            <select id="lead-platform">
+              <option>TikTok Shop US</option>
+              <option>Shopify</option>
+              <option>Amazon</option>
+              <option>Walmart</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label>
+            SKU count
+            <input id="lead-skus" type="number" min="1" value="20" required />
+          </label>
+          <label>
+            Biggest margin problem
+            <textarea id="lead-pain" rows="4" placeholder="Example: affiliate commission and returns make margin unclear"></textarea>
+          </label>
+          <button class="button primary full" type="submit">Request Free Audit</button>
+          <p class="form-note" id="lead-note">Your request will be saved and sent to the backend.</p>
+        </form>
+      </section>
+
+      <section class="section pricing" id="pricing" aria-labelledby="pricing-title">
+        <div class="section-heading">
+          <p class="eyebrow">Pricing</p>
+          <h2 id="pricing-title">Start with a paid audit service, then move into subscription.</h2>
+        </div>
+        <div class="pricing-grid">
+          <article class="price-card">
+            <p class="plan-name">Free entry</p>
+            <h3>3-SKU Audit</h3>
+            <strong>$0</strong>
+            <ul>
+              <li>True profit per SKU</li>
+              <li>Break-even price</li>
+              <li>Risk level</li>
+              <li>Initial recommendations</li>
+            </ul>
+          </article>
+          <article class="price-card featured">
+            <p class="plan-name">Starter revenue</p>
+            <h3>20-SKU Audit</h3>
+            <strong>HK$328</strong>
+            <ul>
+              <li>Bulk margin ranking</li>
+              <li>Hidden-loss SKU list</li>
+              <li>Commission ceiling</li>
+              <li>Ad CPA ceiling</li>
+            </ul>
+          </article>
+          <article class="price-card">
+            <p class="plan-name">Store audit</p>
+            <h3>50-100 SKUs</h3>
+            <strong>HK$1099+</strong>
+            <ul>
+              <li>Full SKU risk table</li>
+              <li>Pricing suggestions</li>
+              <li>Logistics and duty sensitivity</li>
+              <li>One review call</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section faq" aria-labelledby="faq-title">
+        <div class="section-heading">
+          <p class="eyebrow">FAQ</p>
+          <h2 id="faq-title">Common seller questions.</h2>
+        </div>
+        <div class="faq-grid">
+          <details open>
+            <summary>Do you need my store login?</summary>
+            <p>No. The first audit only needs basic SKU cost data that you choose to provide.</p>
+          </details>
+          <details>
+            <summary>Are duty and compliance results final?</summary>
+            <p>No. SKUProfit provides commercial estimates and risk signals. Final classification and customs decisions should be confirmed with professionals.</p>
+          </details>
+          <details>
+            <summary>Which platforms are supported?</summary>
+            <p>TikTok Shop US, Shopify, Amazon, Walmart and similar cross-border sales channels.</p>
+          </details>
+          <details>
+            <summary>How is a paid audit delivered?</summary>
+            <p>A 20-SKU audit is usually delivered within 2-5 business days after complete data and payment confirmation.</p>
+          </details>
+        </div>
+      </section>
+
+      <section class="section final-cta" aria-labelledby="final-cta-title">
+        <div>
+          <p class="eyebrow">Start the audit</p>
+          <h2 id="final-cta-title">Audit 3 SKUs free and find hidden margin leaks.</h2>
+          <p>No store access required. Send basic cost data and get an initial view of true profit, break-even price and commission limits.</p>
+        </div>
+        <a class="button primary" href="#lead">Request Free Audit</a>
+      </section>
+    </main>
+
+    <footer class="site-footer full-footer">
+      <div>
+        <strong>SKUProfit</strong>
+        <p>Results are for commercial estimation only and are not customs, tax or legal advice.</p>
+      </div>
+      <nav class="footer-links" aria-label="Footer navigation">
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+        <a href="refund.html">Delivery & Refund</a>
+        <a href="security.html">Security</a>
+        <a href="contact.html">Contact</a>
+        <a href="/language?lang=zh&next=/index.html">中文</a>
+        <a href="#top">Back to top</a>
+      </nav>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

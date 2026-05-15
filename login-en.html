@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login | SKUProfit</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="auth-page">
+    <main class="auth-shell">
+      <section class="auth-card">
+        <a class="brand" href="/language?lang=en&next=/en.html">
+          <span class="brand-mark">SP</span>
+          <span>SKUProfit</span>
+        </a>
+        <p class="eyebrow">Seller Dashboard</p>
+        <h1>Manage audits, orders and paid plans.</h1>
+        <p class="auth-muted">
+          Email login is available now. WeChat and Google are demo login buttons until official OAuth keys are configured.
+        </p>
+
+        <div class="auth-tabs" role="tablist" aria-label="Login mode">
+          <button class="auth-tab active" id="login-tab" type="button">Login</button>
+          <button class="auth-tab" id="register-tab" type="button">Sign up</button>
+        </div>
+
+        <form class="auth-form" id="auth-form">
+          <label id="name-row" hidden>
+            Name
+            <input id="name" type="text" placeholder="Your name" />
+          </label>
+          <label>
+            Email
+            <input id="email" type="email" placeholder="you@example.com" required />
+          </label>
+          <label>
+            Password
+            <input id="password" type="password" minlength="6" placeholder="At least 6 characters" required />
+          </label>
+          <button class="button primary full" id="auth-submit" type="submit">Login</button>
+          <p class="form-note" id="auth-message"></p>
+        </form>
+
+        <div class="oauth-grid">
+          <button class="button secondary full" data-provider="wechat" type="button">WeChat demo login</button>
+          <button class="button secondary full" data-provider="google" type="button">Google demo login</button>
+        </div>
+        <p class="form-note">
+          Production WeChat login needs a WeChat Open Platform website app. Google login needs an OAuth client and callback URL.
+        </p>
+        <p class="form-note legal-note">
+          By logging in or signing up, you agree to the <a href="terms.html">Terms</a> and <a href="privacy.html">Privacy Policy</a>.
+        </p>
+        <p class="form-note"><a href="/language?lang=zh&next=/login.html">中文登录</a></p>
+      </section>
+    </main>
+    <script src="auth.js"></script>
+  </body>
+</html>

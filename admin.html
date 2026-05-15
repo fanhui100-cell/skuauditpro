@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>管理后台 | SKUProfit</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">
+        <span class="brand-mark">SP</span>
+        <span>SKUProfit</span>
+      </a>
+      <nav class="nav-links">
+        <a href="/">免费页面</a>
+        <a href="dashboard.html">用户后台</a>
+        <a href="contact.html">联系页</a>
+      </nav>
+    </header>
+
+    <main class="dashboard">
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">管理后台</p>
+          <h1>审核订单和查看线索。</h1>
+          <p>本地默认管理码是 <code>skuprofit-admin</code>。上线时请用环境变量 <code>ADMIN_CODE</code> 修改。</p>
+        </div>
+        <form class="admin-login" id="admin-form">
+          <label>
+            管理码
+            <input id="admin-code" type="password" value="skuprofit-admin" />
+          </label>
+          <button class="button primary" type="submit">加载数据</button>
+        </form>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">订单</p>
+          <h2>人工审核付款。</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>用户</th>
+                <th>套餐</th>
+                <th>金额</th>
+                <th>方式</th>
+                <th>状态</th>
+                <th>备注</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="admin-orders"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">线索</p>
+          <h2>免费页面提交的潜在客户。</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>称呼</th>
+                <th>联系方式</th>
+                <th>平台</th>
+                <th>SKU 数</th>
+                <th>痛点</th>
+              </tr>
+            </thead>
+            <tbody id="admin-leads"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="admin.js"></script>
+  </body>
+</html>

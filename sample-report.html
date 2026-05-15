@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>报告样张 | SKUProfit</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">
+        <span class="brand-mark">SP</span>
+        <span>SKUProfit</span>
+      </a>
+      <nav class="nav-links">
+        <a href="/">首页</a>
+        <a href="cases.html">案例</a>
+        <a href="contact.html">联系</a>
+        <a href="dashboard.html">后台</a>
+      </nav>
+    </header>
+
+    <main class="report-page">
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Sample Report</p>
+          <h1>20 SKU 利润体检报告样张</h1>
+          <p>正式报告会按风险排序，优先展示亏损 SKU、低利润 SKU 和可继续放量 SKU。</p>
+        </div>
+
+        <div class="report-summary-card">
+          <div>
+            <span>体检 SKU</span>
+            <strong>20</strong>
+          </div>
+          <div>
+            <span>亏损 SKU</span>
+            <strong>4</strong>
+          </div>
+          <div>
+            <span>平均净利率</span>
+            <strong>13.8%</strong>
+          </div>
+          <div>
+            <span>建议优先处理</span>
+            <strong>9</strong>
+          </div>
+        </div>
+
+        <div class="table-wrap report-table">
+          <table>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>售价</th>
+                <th>净利润</th>
+                <th>净利率</th>
+                <th>保本售价</th>
+                <th>风险</th>
+                <th>建议</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>低价饰品套装</td>
+                <td>$12.99</td>
+                <td>-$0.34</td>
+                <td>-2.6%</td>
+                <td>$13.41</td>
+                <td><span class="risk-chip bad">亏损</span></td>
+                <td>停止高佣金达人合作，测试组合装。</td>
+              </tr>
+              <tr>
+                <td>车载收纳盒</td>
+                <td>$28.90</td>
+                <td>$3.21</td>
+                <td>11.1%</td>
+                <td>$25.02</td>
+                <td><span class="risk-chip watch">偏薄</span></td>
+                <td>降低退货率后再加大投放。</td>
+              </tr>
+              <tr>
+                <td>LED 桌面灯</td>
+                <td>$39.99</td>
+                <td>$8.46</td>
+                <td>21.2%</td>
+                <td>$29.17</td>
+                <td><span class="risk-chip good">健康</span></td>
+                <td>继续测试达人测评和套装加购。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="report-actions">
+          <button class="button secondary" type="button" onclick="window.print()">打印 / 保存 PDF</button>
+          <a class="button primary" href="/#lead">申请免费体检</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

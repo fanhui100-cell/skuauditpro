@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>用户后台 | SKUProfit</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">
+        <span class="brand-mark">SP</span>
+        <span>SKUProfit</span>
+      </a>
+      <nav class="nav-links" aria-label="后台导航">
+        <a href="/">免费页面</a>
+        <a href="#pricing">套餐</a>
+        <a href="#orders">订单</a>
+        <a href="sample-report.html">报告样张</a>
+        <a href="admin.html">管理后台</a>
+        <button class="button ghost" id="logout" type="button">退出</button>
+      </nav>
+    </header>
+
+    <main class="dashboard">
+      <section class="section split dashboard-hero">
+        <div>
+          <p class="eyebrow">用户后台</p>
+          <h1 id="welcome">欢迎回来</h1>
+          <p>这里用于管理你的利润体检服务、订单和付款状态。当前版本先跑通商业闭环，后续可接真实 Stripe / 微信 / Google。</p>
+        </div>
+        <div class="account-card">
+          <span>当前套餐</span>
+          <strong id="current-plan">免费测 3 个 SKU</strong>
+          <p id="account-email">-</p>
+        </div>
+      </section>
+
+      <section class="section pricing" id="pricing">
+        <div class="section-heading">
+          <p class="eyebrow">选择套餐</p>
+          <h2>从免费体检到整店诊断。</h2>
+        </div>
+        <div class="pricing-grid" id="plan-list"></div>
+      </section>
+
+      <section class="section split" id="checkout">
+        <div>
+          <p class="eyebrow">付款方式</p>
+          <h2>先支持人工收款，后续接自动支付。</h2>
+          <p>
+            你现在有国内银行卡和香港银行卡/信用卡，所以最现实的第一版是国内转账、香港转账和 Stripe HK 预留。
+          </p>
+          <div class="payment-list" id="payment-list"></div>
+        </div>
+        <form class="lead-form" id="checkout-form">
+          <label>
+            已选套餐
+            <select id="checkout-plan"></select>
+          </label>
+          <label>
+            付款方式
+            <select id="checkout-method"></select>
+          </label>
+          <button class="button primary full" type="submit">创建订单</button>
+          <p class="form-note legal-note">
+            创建订单前请阅读 <a href="refund.html">退款与交付说明</a>。利润、关税和合规提示仅用于商业测算。
+          </p>
+          <p class="form-note" id="checkout-message"></p>
+        </form>
+      </section>
+
+      <section class="section" id="orders">
+        <div class="section-heading">
+          <p class="eyebrow">我的订单</p>
+          <h2>提交付款备注后，管理员审核开通。</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>套餐</th>
+                <th>金额</th>
+                <th>方式</th>
+                <th>状态</th>
+                <th>付款备注</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="order-list"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="dashboard.js"></script>
+  </body>
+</html>

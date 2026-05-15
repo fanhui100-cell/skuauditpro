@@ -1,0 +1,51 @@
+{
+  "users": [
+    {
+      "id": "8c8cb728-c96d-411a-b36e-7e3c929c8ff6",
+      "name": "测试用户",
+      "email": "test1778855967172@example.com",
+      "provider": "email",
+      "passwordHash": "96d689d104e4058e04885b559833efe4:81e56fc2cae16594359cfadd86e787ca16f9ecc62b5637f45ec9d2579b76a874",
+      "planId": "audit-20-sku",
+      "createdAt": "2026-05-15T14:39:27.217Z"
+    },
+    {
+      "id": "fb891f85-1c6d-4a8b-b70c-7bccfc93dba5",
+      "name": "微信演示用户",
+      "email": "wechat-demo-4814c5@demo.skuprofit.local",
+      "provider": "wechat-demo",
+      "planId": "free-3-sku",
+      "createdAt": "2026-05-15T15:03:57.233Z"
+    }
+  ],
+  "sessions": [
+    {
+      "token": "844b77326804fb012f1053189dc63d86374b8d342190844968668b847eecdd8a",
+      "userId": "8c8cb728-c96d-411a-b36e-7e3c929c8ff6",
+      "createdAt": 1778855967217,
+      "expiresAt": 1780065567217
+    },
+    {
+      "token": "2efdaf54dc9bc321796bd1a57896c029046e54b843117d60dca75edd132a20f5",
+      "userId": "fb891f85-1c6d-4a8b-b70c-7bccfc93dba5",
+      "createdAt": 1778857437233,
+      "expiresAt": 1780067037233
+    }
+  ],
+  "orders": [
+    {
+      "id": "bd77c4fe-5c8a-46f2-a4ce-2e08b0117e8d",
+      "userId": "8c8cb728-c96d-411a-b36e-7e3c929c8ff6",
+      "planId": "audit-20-sku",
+      "planName": "20 SKU 利润体检",
+      "paymentMethod": "manual-cn-bank",
+      "amountCny": 299,
+      "amountHkd": 328,
+      "status": "paid",
+      "proofNote": "测试付款备注",
+      "createdAt": "2026-05-15T14:39:27.227Z",
+      "updatedAt": "2026-05-15T14:39:27.233Z"
+    }
+  ],
+  "leads": []
+}

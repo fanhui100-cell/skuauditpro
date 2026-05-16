@@ -3,19 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>登录 | SKUProfit</title>
+    <title>登录 | SKUAuditPro</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="auth-page">
     <main class="auth-shell">
       <section class="auth-card">
         <a class="brand" href="/">
-          <span class="brand-mark">SP</span>
-          <span>SKUProfit</span>
+          <span class="brand-mark">SA</span>
+          <span>SKUAuditPro</span>
         </a>
         <p class="eyebrow">用户后台</p>
         <h1>登录后管理体检报告和付费套餐。</h1>
-        <p class="auth-muted">本地完整版本已支持邮箱注册登录。微信/Google 登录先提供演示入口，正式上线时接入对应开放平台密钥。</p>
+        <p class="auth-muted">已支持邮箱注册登录和 Google 登录。微信登录需要微信开放平台网站应用审核通过后再接入。</p>
 
         <div class="auth-tabs" role="tablist" aria-label="登录方式">
           <button class="auth-tab active" id="login-tab" type="button">登录</button>
@@ -41,10 +41,10 @@
 
         <div class="oauth-grid">
           <button class="button secondary full" data-provider="wechat" type="button">微信演示登录</button>
-          <button class="button secondary full" data-provider="google" type="button">Google 演示登录</button>
+          <button class="button secondary full" data-provider="google" type="button">使用 Google 登录</button>
         </div>
         <p class="form-note">
-          正式微信登录需要微信开放平台网站应用；Google 登录需要 OAuth Client ID 和回调域名。
+          Google 登录会跳转到 Google 官方授权页面；微信登录需要微信开放平台网站应用。
         </p>
         <p class="form-note legal-note">
           注册或登录即表示你同意 <a href="terms.html">服务条款</a> 和 <a href="privacy.html">隐私政策</a>。

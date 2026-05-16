@@ -1,12 +1,37 @@
 ﻿import http from "node:http";
 import crypto from "node:crypto";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 
 const root = process.cwd();
 const dataDir = join(root, "data");
 const dbPath = join(dataDir, "db.json");
+
+function loadEnvFile() {
+  const envPath = join(root, ".env");
+  if (!existsSync(envPath)) {
+    return;
+  }
+
+  const rows = readFileSync(envPath, "utf-8").split(/\r?\n/);
+  rows.forEach((row) => {
+    const line = row.trim();
+    if (!line || line.startsWith("#") || !line.includes("=")) {
+      return;
+    }
+
+    const index = line.indexOf("=");
+    const key = line.slice(0, index).trim();
+    const value = line.slice(index + 1).trim().replace(/^['"]|['"]$/g, "");
+    if (key && process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  });
+}
+
+loadEnvFile();
+
 const port = Number(process.env.PORT || 4173);
 const adminCode = process.env.ADMIN_CODE || "skuprofit-admin";
 
@@ -77,6 +102,16 @@ const paymentMethods = [
   },
 ];
 
+const defaultCompanySettings = {
+  companyName: "SKUAuditPro",
+  legalName: "SKUAuditPro Advisory",
+  email: "hello@skuauditpro.com",
+  address: "Hong Kong / Remote",
+  logoDataUrl: "",
+  paymentInstructions:
+    "Please complete payment by bank transfer, FPS or the agreed manual payment method. Include the invoice number in your payment note.",
+};
+
 const types = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -91,10 +126,29 @@ async function loadDb() {
   }
 
   if (!existsSync(dbPath)) {
-    await saveDb({ users: [], sessions: [], orders: [], leads: [] });
+    await saveDb({
+      users: [],
+      sessions: [],
+      orders: [],
+      leads: [],
+      calculations: [],
+      quotes: [],
+      invoices: [],
+      settings: { company: defaultCompanySettings },
+    });
   }
 
-  return JSON.parse(await readFile(dbPath, "utf-8"));
+  const db = JSON.parse(await readFile(dbPath, "utf-8"));
+  db.users ||= [];
+  db.sessions ||= [];
+  db.orders ||= [];
+  db.leads ||= [];
+  db.calculations ||= [];
+  db.quotes ||= [];
+  db.invoices ||= [];
+  db.settings ||= {};
+  db.settings.company = { ...defaultCompanySettings, ...(db.settings.company || {}) };
+  return db;
 }
 
 async function saveDb(db) {
@@ -109,6 +163,20 @@ function sendJson(response, status, payload) {
 function redirect(response, location) {
   response.writeHead(302, { Location: location });
   response.end();
+}
+
+function appendCookie(response, cookie) {
+  const existing = response.getHeader("Set-Cookie");
+  if (!existing) {
+    response.setHeader("Set-Cookie", cookie);
+    return;
+  }
+
+  response.setHeader("Set-Cookie", Array.isArray(existing) ? [...existing, cookie] : [existing, cookie]);
+}
+
+function publicBaseUrl(request) {
+  return (process.env.APP_BASE_URL || `http://${request.headers.host}`).replace(/\/$/, "");
 }
 
 function preferredLanguage(request) {
@@ -183,7 +251,157 @@ function publicUser(user) {
     email: user.email,
     provider: user.provider,
     planId: user.planId || "free-3-sku",
+    onboarded: Boolean(user.onboarded),
     createdAt: user.createdAt,
+  };
+}
+
+function publicCalculation(calculation) {
+  return {
+    id: calculation.id,
+    shareToken: calculation.shareToken,
+    sku: calculation.sku,
+    platform: calculation.platform,
+    inputs: calculation.inputs,
+    result: calculation.result,
+    risk: calculation.risk,
+    recommendations: calculation.recommendations,
+    createdAt: calculation.createdAt,
+  };
+}
+
+function reportSummaryFromCalculations(calculations) {
+  const count = calculations.length;
+  const lossCount = calculations.filter((item) => Number(item.result?.margin) < 0).length;
+  const watchCount = calculations.filter((item) => {
+    const margin = Number(item.result?.margin);
+    return margin >= 0 && margin < 0.12;
+  }).length;
+  const healthyCount = Math.max(0, count - lossCount - watchCount);
+  const avgMargin = count
+    ? calculations.reduce((sum, item) => sum + (Number(item.result?.margin) || 0), 0) / count
+    : 0;
+  const totalNetProfit = calculations.reduce((sum, item) => sum + (Number(item.result?.netProfit) || 0), 0);
+  const priority = [...calculations].sort((a, b) => (Number(a.result?.margin) || 0) - (Number(b.result?.margin) || 0))[0] || null;
+
+  return {
+    count,
+    lossCount,
+    watchCount,
+    healthyCount,
+    avgMargin,
+    totalNetProfit,
+    prioritySku: priority ? publicCalculation(priority) : null,
+  };
+}
+
+function createReportId() {
+  const date = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+  return `SA-${date}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+}
+
+function createQuoteId() {
+  const date = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+  return `QT-${date}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+}
+
+function createInvoiceId() {
+  const date = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+  return `INV-${date}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+}
+
+function publicQuote(quote) {
+  return {
+    id: quote.id,
+    quoteNo: quote.quoteNo,
+    customerName: quote.customerName,
+    customerEmail: quote.customerEmail,
+    serviceName: quote.serviceName,
+    planId: quote.planId || "",
+    planName: quote.planName || "",
+    amount: quote.amount,
+    currency: quote.currency,
+    status: quote.status,
+    notes: quote.notes,
+    invoiceId: quote.invoiceId || "",
+    createdAt: quote.createdAt,
+    updatedAt: quote.updatedAt,
+    expiresAt: quote.expiresAt,
+  };
+}
+
+function publicInvoice(invoice) {
+  const effectiveStatus =
+    invoice.status === "pending" && invoice.dueAt && new Date(invoice.dueAt).getTime() < Date.now()
+      ? "overdue"
+      : invoice.status;
+
+  return {
+    id: invoice.id,
+    invoiceNo: invoice.invoiceNo,
+    publicToken: invoice.publicToken || "",
+    quoteId: invoice.quoteId || "",
+    quoteNo: invoice.quoteNo || "",
+    customerName: invoice.customerName,
+    customerEmail: invoice.customerEmail,
+    serviceName: invoice.serviceName,
+    planId: invoice.planId || "",
+    planName: invoice.planName || "",
+    amount: invoice.amount,
+    currency: invoice.currency,
+    status: effectiveStatus,
+    notes: invoice.notes,
+    issuedAt: invoice.issuedAt,
+    dueAt: invoice.dueAt,
+    paidAt: invoice.paidAt || "",
+    upgradedAt: invoice.upgradedAt || "",
+    createdAt: invoice.createdAt,
+    updatedAt: invoice.updatedAt,
+  };
+}
+
+function billingOverview(invoices) {
+  const now = Date.now();
+  return invoices.reduce(
+    (summary, invoice) => {
+      const amount = Number(invoice.amount) || 0;
+      summary.total += amount;
+      if (invoice.status === "paid") {
+        summary.paid += amount;
+      } else if (invoice.status === "overdue" || (invoice.status === "pending" && new Date(invoice.dueAt).getTime() < now)) {
+        summary.overdue += amount;
+      } else if (invoice.status === "pending") {
+        summary.pending += amount;
+      }
+      return summary;
+    },
+    { total: 0, paid: 0, pending: 0, overdue: 0 },
+  );
+}
+
+function createInvoiceFromQuote(quote, dueDays = 7) {
+  const issuedAt = new Date();
+  const dueAt = new Date(issuedAt.getTime() + Number(dueDays || 7) * 24 * 60 * 60 * 1000);
+  return {
+    id: crypto.randomUUID(),
+    invoiceNo: createInvoiceId(),
+    publicToken: crypto.randomBytes(12).toString("hex"),
+    quoteId: quote.id,
+    quoteNo: quote.quoteNo,
+    userId: quote.userId || "",
+    customerName: quote.customerName,
+    customerEmail: quote.customerEmail,
+    serviceName: quote.serviceName,
+    planId: quote.planId || "",
+    planName: quote.planName || "",
+    amount: Number(quote.amount) || 0,
+    currency: quote.currency || "HKD",
+    status: "pending",
+    notes: quote.notes || "",
+    issuedAt: issuedAt.toISOString(),
+    dueAt: dueAt.toISOString(),
+    createdAt: issuedAt.toISOString(),
+    updatedAt: issuedAt.toISOString(),
   };
 }
 
@@ -210,14 +428,14 @@ async function createSession(response, db, userId) {
     expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 14,
   });
   await saveDb(db);
-  response.setHeader("Set-Cookie", `session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=1209600`);
+  appendCookie(response, `session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=1209600`);
 }
 
 async function clearSession(request, response, db) {
   const token = parseCookies(request).session;
   db.sessions = db.sessions.filter((session) => session.token !== token);
   await saveDb(db);
-  response.setHeader("Set-Cookie", "session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+  appendCookie(response, "session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
 }
 
 async function createStripeCheckout(order, plan, request) {
@@ -262,6 +480,41 @@ async function createStripeCheckout(order, plan, request) {
   return checkout.url;
 }
 
+async function exchangeGoogleCode(request, code) {
+  const redirectUri = `${publicBaseUrl(request)}/api/auth/google/callback`;
+  const params = new URLSearchParams({
+    code,
+    client_id: process.env.GOOGLE_CLIENT_ID || "",
+    client_secret: process.env.GOOGLE_CLIENT_SECRET || "",
+    redirect_uri: redirectUri,
+    grant_type: "authorization_code",
+  });
+
+  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params,
+  });
+
+  if (!tokenResponse.ok) {
+    return null;
+  }
+
+  return tokenResponse.json();
+}
+
+async function fetchGoogleProfile(accessToken) {
+  const profileResponse = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!profileResponse.ok) {
+    return null;
+  }
+
+  return profileResponse.json();
+}
+
 async function handleApi(request, response, url) {
   const db = await loadDb();
   const user = await currentUser(request, db);
@@ -273,6 +526,105 @@ async function handleApi(request, response, url) {
 
   if (request.method === "GET" && url.pathname === "/api/plans") {
     sendJson(response, 200, { plans, paymentMethods });
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/auth/google") {
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      sendJson(response, 503, { error: "Google 登录还没有配置 Client ID 和 Secret。" });
+      return true;
+    }
+
+    const state = crypto.randomBytes(16).toString("hex");
+    const next = url.searchParams.get("next") || "/dashboard.html";
+    const params = new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      redirect_uri: `${publicBaseUrl(request)}/api/auth/google/callback`,
+      response_type: "code",
+      scope: "openid email profile",
+      state,
+      access_type: "online",
+      prompt: "select_account",
+    });
+
+    appendCookie(response, `google_oauth_state=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600`);
+    appendCookie(
+      response,
+      `google_oauth_next=${encodeURIComponent(next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard.html")}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600`,
+    );
+    redirect(response, `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/auth/google/callback") {
+    const cookies = parseCookies(request);
+    const state = url.searchParams.get("state") || "";
+    const code = url.searchParams.get("code") || "";
+    const next = cookies.google_oauth_next || "/dashboard.html";
+
+    appendCookie(response, "google_oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+    appendCookie(response, "google_oauth_next=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+
+    if (!code || !state || state !== cookies.google_oauth_state) {
+      redirect(response, `/login.html?error=${encodeURIComponent("Google 登录验证失败，请重新尝试。")}`);
+      return true;
+    }
+
+    const token = await exchangeGoogleCode(request, code);
+    const profile = token?.access_token ? await fetchGoogleProfile(token.access_token) : null;
+    const email = String(profile?.email || "").trim().toLowerCase();
+
+    if (!email || profile.email_verified === false) {
+      redirect(response, `/login.html?error=${encodeURIComponent("Google 邮箱未验证，无法登录。")}`);
+      return true;
+    }
+
+    let googleUser = db.users.find((item) => item.email === email);
+    if (googleUser) {
+      googleUser.provider = googleUser.provider === "email" ? "email+google" : googleUser.provider || "google";
+      googleUser.googleSub = profile.sub || googleUser.googleSub || "";
+      googleUser.name = googleUser.name || profile.name || email.split("@")[0];
+      googleUser.updatedAt = new Date().toISOString();
+    } else {
+      googleUser = {
+        id: crypto.randomUUID(),
+        name: String(profile.name || email.split("@")[0]).trim(),
+        email,
+        provider: "google",
+        googleSub: profile.sub || "",
+        planId: "free-3-sku",
+        onboarded: false,
+        createdAt: new Date().toISOString(),
+      };
+      db.users.push(googleUser);
+    }
+
+    await createSession(response, db, googleUser.id);
+    redirect(response, next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard.html");
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/stats") {
+    sendJson(response, 200, {
+      users: db.users.length,
+      calculations: db.calculations.length,
+      reports: db.leads.length,
+    });
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname.match(/^\/api\/invoices\/public\/[^/]+$/)) {
+    const publicToken = decodeURIComponent(url.pathname.split("/")[4] || "").trim();
+    const invoice = db.invoices.find((item) => item.publicToken === publicToken);
+    if (!invoice) {
+      sendJson(response, 404, { error: "发票不存在或链接已失效。" });
+      return true;
+    }
+
+    sendJson(response, 200, {
+      invoice: publicInvoice(invoice),
+      company: db.settings.company,
+    });
     return true;
   }
 
@@ -299,6 +651,7 @@ async function handleApi(request, response, url) {
       provider: "email",
       passwordHash: hashPassword(password),
       planId: "free-3-sku",
+      onboarded: false,
       createdAt: new Date().toISOString(),
     };
     db.users.push(newUser);
@@ -333,6 +686,7 @@ async function handleApi(request, response, url) {
       email,
       provider,
       planId: "free-3-sku",
+      onboarded: false,
       createdAt: new Date().toISOString(),
     };
     db.users.push(newUser);
@@ -347,15 +701,179 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (request.method === "POST" && url.pathname === "/api/account/password") {
+    if (!user) {
+      sendJson(response, 401, { error: "请先登录。" });
+      return true;
+    }
+
+    const body = await readBody(request);
+    const currentPassword = String(body.currentPassword || "");
+    const newPassword = String(body.newPassword || "");
+
+    if (newPassword.length < 6) {
+      sendJson(response, 400, { error: "新密码至少 6 位。" });
+      return true;
+    }
+
+    if (user.passwordHash && !verifyPassword(currentPassword, user.passwordHash)) {
+      sendJson(response, 401, { error: "当前密码不正确。" });
+      return true;
+    }
+
+    user.passwordHash = hashPassword(newPassword);
+    user.updatedAt = new Date().toISOString();
+    await saveDb(db);
+    sendJson(response, 200, { ok: true });
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/account/onboarding") {
+    if (!user) {
+      sendJson(response, 401, { error: "请先登录。" });
+      return true;
+    }
+
+    user.onboarded = true;
+    user.updatedAt = new Date().toISOString();
+    await saveDb(db);
+    sendJson(response, 200, { user: publicUser(user) });
+    return true;
+  }
+
+  if (request.method === "DELETE" && url.pathname === "/api/account") {
+    if (!user) {
+      sendJson(response, 401, { error: "请先登录。" });
+      return true;
+    }
+
+    const body = await readBody(request);
+    if (body.confirm !== "DELETE") {
+      sendJson(response, 400, { error: "请输入 DELETE 确认注销。" });
+      return true;
+    }
+
+    db.users = db.users.filter((item) => item.id !== user.id);
+    db.sessions = db.sessions.filter((item) => item.userId !== user.id);
+    db.orders = db.orders.filter((item) => item.userId !== user.id);
+    db.calculations = db.calculations.filter((item) => item.userId !== user.id);
+    await saveDb(db);
+    response.setHeader("Set-Cookie", "session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+    sendJson(response, 200, { ok: true });
+    return true;
+  }
+
   if (request.method === "POST" && url.pathname === "/api/leads") {
     const body = await readBody(request);
-    db.leads.push({
+    const lead = {
       id: crypto.randomUUID(),
       ...body,
+      userId: user?.id || body.userId || "",
+      reportId: createReportId(),
+      status: "new",
+      source: body.source || "homepage",
       createdAt: new Date().toISOString(),
-    });
+      updatedAt: new Date().toISOString(),
+    };
+    db.leads.push(lead);
     await saveDb(db);
-    sendJson(response, 201, { ok: true });
+    sendJson(response, 201, { ok: true, lead });
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/calculations") {
+    if (!user) {
+      sendJson(response, 401, { error: "请先登录。" });
+      return true;
+    }
+
+    let changed = false;
+    db.calculations.forEach((item) => {
+      if (!item.shareToken) {
+        item.shareToken = crypto.randomBytes(12).toString("hex");
+        changed = true;
+      }
+    });
+    if (changed) {
+      await saveDb(db);
+    }
+
+    sendJson(response, 200, {
+      calculations: db.calculations
+        .filter((item) => item.userId === user.id)
+        .map(publicCalculation)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    });
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname.match(/^\/api\/calculations\/public\/[^/]+$/)) {
+    const shareToken = decodeURIComponent(url.pathname.split("/")[4] || "").trim();
+    const calculation = db.calculations.find((item) => item.shareToken === shareToken);
+    if (!calculation) {
+      sendJson(response, 404, { error: "分享记录不存在或链接已失效。" });
+      return true;
+    }
+
+    sendJson(response, 200, { calculation: publicCalculation(calculation) });
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/calculations") {
+    if (!user) {
+      sendJson(response, 401, { error: "请先登录后保存计算记录。" });
+      return true;
+    }
+
+    const body = await readBody(request);
+    const calculation = {
+      id: crypto.randomUUID(),
+      userId: user.id,
+      shareToken: crypto.randomBytes(12).toString("hex"),
+      sku: String(body.sku || "未命名 SKU").slice(0, 120),
+      platform: String(body.platform || "-").slice(0, 80),
+      inputs: body.inputs || {},
+      result: body.result || {},
+      risk: String(body.risk || "-").slice(0, 40),
+      recommendations: Array.isArray(body.recommendations) ? body.recommendations.slice(0, 8) : [],
+      createdAt: new Date().toISOString(),
+    };
+    db.calculations.push(calculation);
+    await saveDb(db);
+    sendJson(response, 201, { calculation });
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname.match(/^\/api\/reports\/[^/]+$/)) {
+    const reportId = decodeURIComponent(url.pathname.split("/")[3] || "").trim().toUpperCase();
+    const lead = db.leads.find((item) => String(item.reportId || "").toUpperCase() === reportId);
+
+    if (!lead) {
+      sendJson(response, 404, { error: "报告不存在或编号不正确。" });
+      return true;
+    }
+
+    const calculations = lead.userId
+      ? db.calculations
+          .filter((item) => item.userId === lead.userId)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          .slice(0, 50)
+      : [];
+
+    sendJson(response, 200, {
+      report: {
+        reportId: lead.reportId,
+        status: lead.status || "new",
+        name: lead.name || "",
+        platform: lead.platform || "",
+        skuCount: lead.skuCount || "",
+        pain: lead.pain || "",
+        createdAt: lead.createdAt,
+        updatedAt: lead.updatedAt || lead.createdAt,
+        calculations: calculations.map(publicCalculation),
+        summary: reportSummaryFromCalculations(calculations),
+      },
+    });
     return true;
   }
 
@@ -370,6 +888,55 @@ async function handleApi(request, response, url) {
         .filter((order) => order.userId === user.id)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     });
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/billing") {
+    if (!user) {
+      sendJson(response, 401, { error: "请先登录。" });
+      return true;
+    }
+
+    const quotes = db.quotes
+      .filter((item) => item.userId === user.id || item.customerEmail === user.email)
+      .map(publicQuote)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const invoices = db.invoices
+      .filter((item) => item.userId === user.id || item.customerEmail === user.email)
+      .map(publicInvoice)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    sendJson(response, 200, { quotes, invoices, overview: billingOverview(invoices) });
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname.match(/^\/api\/quotes\/[^/]+\/accept$/)) {
+    if (!user) {
+      sendJson(response, 401, { error: "请先登录。" });
+      return true;
+    }
+
+    const quoteId = url.pathname.split("/")[3];
+    const quote = db.quotes.find((item) => item.id === quoteId && (item.userId === user.id || item.customerEmail === user.email));
+    if (!quote) {
+      sendJson(response, 404, { error: "报价不存在。" });
+      return true;
+    }
+
+    if (quote.invoiceId) {
+      const invoice = db.invoices.find((item) => item.id === quote.invoiceId);
+      sendJson(response, 200, { quote: publicQuote(quote), invoice: invoice ? publicInvoice(invoice) : null });
+      return true;
+    }
+
+    const invoice = createInvoiceFromQuote({ ...quote, userId: user.id }, 7);
+    quote.status = "converted";
+    quote.userId = user.id;
+    quote.invoiceId = invoice.id;
+    quote.updatedAt = new Date().toISOString();
+    db.invoices.push(invoice);
+    await saveDb(db);
+    sendJson(response, 201, { quote: publicQuote(quote), invoice: publicInvoice(invoice) });
     return true;
   }
 
@@ -461,6 +1028,184 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (request.method === "GET" && url.pathname === "/api/admin/billing") {
+    if (url.searchParams.get("code") !== adminCode) {
+      sendJson(response, 403, { error: "管理码不正确。" });
+      return true;
+    }
+
+    let changed = false;
+    db.invoices.forEach((invoice) => {
+      if (!invoice.publicToken) {
+        invoice.publicToken = crypto.randomBytes(12).toString("hex");
+        changed = true;
+      }
+    });
+    if (changed) {
+      await saveDb(db);
+    }
+
+    const invoices = db.invoices.map(publicInvoice);
+    sendJson(response, 200, {
+      users: db.users.map(publicUser),
+      quotes: db.quotes.map(publicQuote).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      invoices: invoices.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      overview: billingOverview(invoices),
+      company: db.settings.company,
+    });
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/admin/settings/company") {
+    const body = await readBody(request);
+    if (body.code !== adminCode) {
+      sendJson(response, 403, { error: "管理码不正确。" });
+      return true;
+    }
+
+    db.settings.company = {
+      ...db.settings.company,
+      companyName: String(body.companyName || db.settings.company.companyName).trim(),
+      legalName: String(body.legalName || db.settings.company.legalName).trim(),
+      email: String(body.email || db.settings.company.email).trim(),
+      address: String(body.address || db.settings.company.address).trim(),
+      paymentInstructions: String(body.paymentInstructions || db.settings.company.paymentInstructions).trim(),
+      logoDataUrl: String(body.logoDataUrl || "").startsWith("data:image/")
+        ? String(body.logoDataUrl).slice(0, 400000)
+        : db.settings.company.logoDataUrl,
+    };
+    await saveDb(db);
+    sendJson(response, 200, { company: db.settings.company });
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname.match(/^\/api\/admin\/users\/[^/]+\/plan$/)) {
+    const body = await readBody(request);
+    if (body.code !== adminCode) {
+      sendJson(response, 403, { error: "管理码不正确。" });
+      return true;
+    }
+
+    const userId = url.pathname.split("/")[4];
+    const targetUser = db.users.find((item) => item.id === userId);
+    const plan = plans.find((item) => item.id === body.planId);
+    if (!targetUser || !plan) {
+      sendJson(response, 400, { error: "用户或套餐不存在。" });
+      return true;
+    }
+
+    targetUser.planId = plan.id;
+    targetUser.updatedAt = new Date().toISOString();
+    await saveDb(db);
+    sendJson(response, 200, { user: publicUser(targetUser) });
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/admin/quotes") {
+    const body = await readBody(request);
+    if (body.code !== adminCode) {
+      sendJson(response, 403, { error: "管理码不正确。" });
+      return true;
+    }
+
+    const email = String(body.customerEmail || "").trim().toLowerCase();
+    const amount = Number(body.amount) || 0;
+    if (!email.includes("@") || amount <= 0) {
+      sendJson(response, 400, { error: "请输入客户邮箱和有效金额。" });
+      return true;
+    }
+
+    const matchedUser = db.users.find((item) => item.email === email);
+    const selectedPlan = plans.find((item) => item.id === body.planId) || plans.find((item) => item.id === "audit-20-sku");
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + Number(body.validDays || 7) * 24 * 60 * 60 * 1000);
+    const quote = {
+      id: crypto.randomUUID(),
+      quoteNo: createQuoteId(),
+      userId: matchedUser?.id || "",
+      customerName: String(body.customerName || matchedUser?.name || email.split("@")[0]).trim(),
+      customerEmail: email,
+      serviceName: String(body.serviceName || "SKU 利润体检服务").trim(),
+      planId: selectedPlan?.id || "",
+      planName: selectedPlan?.name || "",
+      amount,
+      currency: String(body.currency || "HKD").trim().toUpperCase(),
+      status: "sent",
+      notes: String(body.notes || "").trim(),
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    };
+    db.quotes.push(quote);
+    await saveDb(db);
+    sendJson(response, 201, { quote: publicQuote(quote) });
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname.match(/^\/api\/admin\/quotes\/[^/]+\/convert$/)) {
+    const body = await readBody(request);
+    if (body.code !== adminCode) {
+      sendJson(response, 403, { error: "管理码不正确。" });
+      return true;
+    }
+
+    const quoteId = url.pathname.split("/")[4];
+    const quote = db.quotes.find((item) => item.id === quoteId);
+    if (!quote) {
+      sendJson(response, 404, { error: "报价不存在。" });
+      return true;
+    }
+
+    if (quote.invoiceId) {
+      const existingInvoice = db.invoices.find((item) => item.id === quote.invoiceId);
+      sendJson(response, 200, { quote: publicQuote(quote), invoice: existingInvoice ? publicInvoice(existingInvoice) : null });
+      return true;
+    }
+
+    const invoice = createInvoiceFromQuote(quote, body.dueDays || 7);
+    quote.status = "converted";
+    quote.invoiceId = invoice.id;
+    quote.updatedAt = new Date().toISOString();
+    db.invoices.push(invoice);
+    await saveDb(db);
+    sendJson(response, 201, { quote: publicQuote(quote), invoice: publicInvoice(invoice) });
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname.match(/^\/api\/admin\/invoices\/[^/]+\/status$/)) {
+    const body = await readBody(request);
+    if (body.code !== adminCode) {
+      sendJson(response, 403, { error: "管理码不正确。" });
+      return true;
+    }
+
+    const invoiceId = url.pathname.split("/")[4];
+    const invoice = db.invoices.find((item) => item.id === invoiceId);
+    const allowedStatuses = ["pending", "paid", "overdue", "cancelled"];
+    if (!invoice || !allowedStatuses.includes(body.status)) {
+      sendJson(response, 400, { error: "发票或状态不存在。" });
+      return true;
+    }
+
+    invoice.status = body.status;
+    invoice.updatedAt = new Date().toISOString();
+    invoice.paidAt = body.status === "paid" ? new Date().toISOString() : "";
+    if (body.status === "paid" && invoice.planId) {
+      const invoiceUser = db.users.find(
+        (item) => item.id === invoice.userId || item.email === String(invoice.customerEmail || "").toLowerCase(),
+      );
+      if (invoiceUser) {
+        invoiceUser.planId = invoice.planId;
+        invoiceUser.updatedAt = invoice.updatedAt;
+        invoice.userId = invoiceUser.id;
+        invoice.upgradedAt ||= invoice.updatedAt;
+      }
+    }
+    await saveDb(db);
+    sendJson(response, 200, { invoice: publicInvoice(invoice) });
+    return true;
+  }
+
   if (request.method === "POST" && url.pathname === "/api/admin/mark-paid") {
     const body = await readBody(request);
     if (body.code !== adminCode) {
@@ -485,10 +1230,31 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (request.method === "POST" && url.pathname === "/api/admin/leads/status") {
+    const body = await readBody(request);
+    if (body.code !== adminCode) {
+      sendJson(response, 403, { error: "管理码不正确。" });
+      return true;
+    }
+
+    const lead = db.leads.find((item) => item.id === body.leadId);
+    const allowedStatuses = ["new", "reviewing", "ready", "delivered"];
+    if (!lead || !allowedStatuses.includes(body.status)) {
+      sendJson(response, 400, { error: "线索或状态不存在。" });
+      return true;
+    }
+
+    lead.status = body.status;
+    lead.updatedAt = new Date().toISOString();
+    await saveDb(db);
+    sendJson(response, 200, { lead });
+    return true;
+  }
+
   return false;
 }
 
-async function serveStatic(response, pathname) {
+async function sendFile(response, pathname, status = 200) {
   const safePathname = pathname === "/" ? "/index.html" : pathname;
   const filePath = normalize(join(root, safePathname));
   const resolved = resolve(filePath);
@@ -501,13 +1267,24 @@ async function serveStatic(response, pathname) {
 
   try {
     const body = await readFile(resolved);
-    response.writeHead(200, {
+    response.writeHead(status, {
       "Content-Type": types[extname(resolved)] || "application/octet-stream",
     });
     response.end(body);
+    return true;
   } catch {
-    response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-    response.end("Not found");
+    return false;
+  }
+}
+
+async function serveStatic(response, pathname) {
+  const ok = await sendFile(response, pathname, 200);
+  if (!ok) {
+    const sent = await sendFile(response, "/404.html", 404);
+    if (!sent) {
+      response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("Not found");
+    }
   }
 }
 
@@ -548,12 +1325,19 @@ const server = http.createServer(async (request, response) => {
     await serveStatic(response, url.pathname);
   } catch (error) {
     console.error(error);
-    sendJson(response, 500, { error: "服务器错误。" });
+    if (request.url?.startsWith("/api/")) {
+      sendJson(response, 500, { error: "服务器错误。" });
+      return;
+    }
+    const sent = await sendFile(response, "/error.html", 500);
+    if (!sent) {
+      sendJson(response, 500, { error: "服务器错误。" });
+    }
   }
 });
 
 server.listen(port, "0.0.0.0", () => {
-  console.log(`SKUProfit full-stack app running at http://0.0.0.0:${port}`);
+  console.log(`SKUAuditPro full-stack app running at http://0.0.0.0:${port}`);
   console.log(`Admin page: http://127.0.0.1:${port}/admin.html, code: ${adminCode}`);
 });
 

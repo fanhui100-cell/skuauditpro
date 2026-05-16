@@ -6,12 +6,16 @@ const authText = isEnglish
       register: "Sign up and open dashboard",
       processing: "Processing...",
       demo: "Creating demo login...",
+      google: "Continue with Google",
+      wechat: "WeChat demo login",
     }
   : {
       login: "登录",
       register: "注册并进入后台",
       processing: "处理中...",
       demo: "正在创建演示登录...",
+      google: "使用 Google 登录",
+      wechat: "微信演示登录",
     };
 
 const form = document.querySelector("#auth-form");
@@ -49,6 +53,16 @@ async function checkLoggedIn() {
   }
 }
 
+function showAuthErrorFromUrl() {
+  const error = new URLSearchParams(window.location.search).get("error");
+  if (error) {
+    message.textContent = error;
+  }
+}
+
+document.querySelector('[data-provider="google"]')?.replaceChildren(document.createTextNode(authText.google));
+document.querySelector('[data-provider="wechat"]')?.replaceChildren(document.createTextNode(authText.wechat));
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   message.textContent = authText.processing;
@@ -70,6 +84,11 @@ form.addEventListener("submit", async (event) => {
 
 document.querySelectorAll("[data-provider]").forEach((button) => {
   button.addEventListener("click", async () => {
+    if (button.dataset.provider === "google") {
+      window.location.href = `/api/auth/google?next=${encodeURIComponent("/dashboard.html")}`;
+      return;
+    }
+
     message.textContent = authText.demo;
     try {
       await api("/api/auth/demo-social", {
@@ -85,4 +104,5 @@ document.querySelectorAll("[data-provider]").forEach((button) => {
 
 loginTab.addEventListener("click", () => setMode("login"));
 registerTab.addEventListener("click", () => setMode("register"));
+showAuthErrorFromUrl();
 checkLoggedIn();

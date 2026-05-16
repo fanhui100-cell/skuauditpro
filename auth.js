@@ -5,17 +5,13 @@ const authText = isEnglish
       login: "Login",
       register: "Sign up and open dashboard",
       processing: "Processing...",
-      demo: "Creating demo login...",
       google: "Continue with Google",
-      wechat: "WeChat demo login",
     }
   : {
       login: "登录",
-      register: "注册并进入后台",
+      register: "注册并进入账户中心",
       processing: "处理中...",
-      demo: "正在创建演示登录...",
       google: "使用 Google 登录",
-      wechat: "微信演示登录",
     };
 
 const form = document.querySelector("#auth-form");
@@ -61,7 +57,6 @@ function showAuthErrorFromUrl() {
 }
 
 document.querySelector('[data-provider="google"]')?.replaceChildren(document.createTextNode(authText.google));
-document.querySelector('[data-provider="wechat"]')?.replaceChildren(document.createTextNode(authText.wechat));
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -83,21 +78,9 @@ form.addEventListener("submit", async (event) => {
 });
 
 document.querySelectorAll("[data-provider]").forEach((button) => {
-  button.addEventListener("click", async () => {
+  button.addEventListener("click", () => {
     if (button.dataset.provider === "google") {
       window.location.href = `/api/auth/google?next=${encodeURIComponent("/dashboard.html")}`;
-      return;
-    }
-
-    message.textContent = authText.demo;
-    try {
-      await api("/api/auth/demo-social", {
-        method: "POST",
-        body: JSON.stringify({ provider: button.dataset.provider }),
-      });
-      window.location.href = "/dashboard.html";
-    } catch (error) {
-      message.textContent = error.message;
     }
   });
 });

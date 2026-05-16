@@ -25,8 +25,14 @@ form.addEventListener("submit", async (event) => {
       throw new Error("提交失败");
     }
 
+    const data = await response.json();
     form.reset();
-    note.textContent = "已提交。我们会根据你留下的联系方式跟进。";
+    if (data.lead?.reportId) {
+      const reportUrl = `${window.location.origin}/report.html?id=${encodeURIComponent(data.lead.reportId)}`;
+      note.innerHTML = `已提交。报告编号：${data.lead.reportId}，可在 <a href="${reportUrl}" target="_blank" rel="noreferrer">报告查询页</a> 查看进度。`;
+    } else {
+      note.textContent = "已提交。我们会根据你留下的联系方式跟进。";
+    }
   } catch {
     note.textContent = "暂时无法提交，请稍后再试或直接发送邮件。";
   }

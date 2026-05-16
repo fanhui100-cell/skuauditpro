@@ -3,17 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>管理后台 | SKUProfit</title>
+    <title>管理后台 | SKUAuditPro</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="site-header">
       <a class="brand" href="/">
-        <span class="brand-mark">SP</span>
-        <span>SKUProfit</span>
+        <span class="brand-mark">SA</span>
+        <span>SKUAuditPro</span>
       </a>
       <nav class="nav-links">
         <a href="/">免费页面</a>
+        <a href="report.html">报告查询</a>
         <a href="dashboard.html">用户后台</a>
         <a href="contact.html">联系页</a>
       </nav>
@@ -23,7 +24,7 @@
       <section class="section">
         <div class="section-heading">
           <p class="eyebrow">管理后台</p>
-          <h1>审核订单和查看线索。</h1>
+          <h1>审核订单、报价和收款。</h1>
           <p>本地默认管理码是 <code>skuprofit-admin</code>。上线时请用环境变量 <code>ADMIN_CODE</code> 修改。</p>
         </div>
         <form class="admin-login" id="admin-form">
@@ -33,6 +34,165 @@
           </label>
           <button class="button primary" type="submit">加载数据</button>
         </form>
+      </section>
+
+      <section class="section" id="billing-admin">
+        <div class="section-heading">
+          <p class="eyebrow">Quote / Invoice</p>
+          <h2>报价转发票与收款概况。</h2>
+        </div>
+        <div class="report-metric-strip billing-overview">
+          <div><span>总应收</span><strong id="admin-total-revenue">HK$0</strong><small>全部发票</small></div>
+          <div><span>已收</span><strong id="admin-paid-revenue">HK$0</strong><small>Paid</small></div>
+          <div><span>待支付</span><strong id="admin-pending-revenue">HK$0</strong><small>Pending</small></div>
+          <div><span>逾期</span><strong id="admin-overdue-revenue">HK$0</strong><small>Overdue</small></div>
+          <div><span>转化率</span><strong id="admin-conversion-rate">0%</strong><small>Quote → Invoice</small></div>
+        </div>
+
+        <form class="lead-form admin-quote-form" id="quote-form">
+          <h3>创建报价</h3>
+          <div class="form-grid">
+            <label>
+              客户邮箱
+              <input id="quote-email" type="email" placeholder="customer@example.com" required />
+            </label>
+            <label>
+              客户名称
+              <input id="quote-name" type="text" placeholder="客户名称 / 公司名" />
+            </label>
+            <label>
+              服务项目
+              <input id="quote-service" type="text" value="20 SKU 利润体检报告" required />
+            </label>
+            <label>
+              开通套餐
+              <select id="quote-plan">
+                <option value="audit-20-sku">20 SKU 利润体检</option>
+                <option value="store-audit">整店利润诊断</option>
+                <option value="pro-monthly">Pro 月度监控</option>
+                <option value="free-3-sku">免费测 3 个 SKU</option>
+              </select>
+            </label>
+            <label>
+              金额
+              <input id="quote-amount" type="number" min="1" step="0.01" value="328" required />
+            </label>
+            <label>
+              币种
+              <select id="quote-currency">
+                <option>HKD</option>
+                <option>CNY</option>
+                <option>USD</option>
+              </select>
+            </label>
+            <label>
+              有效天数
+              <input id="quote-valid-days" type="number" min="1" value="7" />
+            </label>
+          </div>
+          <label>
+            备注
+            <textarea id="quote-notes" rows="3" placeholder="交付范围、预计时间、付款说明"></textarea>
+          </label>
+          <button class="button primary" type="submit">创建报价</button>
+          <p class="form-note" id="quote-message"></p>
+        </form>
+
+        <form class="lead-form admin-quote-form" id="company-form">
+          <h3>公司资料与发票 Logo</h3>
+          <div class="form-grid">
+            <label>
+              品牌名称
+              <input id="company-name" type="text" placeholder="SKUAuditPro" />
+            </label>
+            <label>
+              法定/收款名称
+              <input id="company-legal-name" type="text" placeholder="Company legal name" />
+            </label>
+            <label>
+              联系邮箱
+              <input id="company-email" type="email" placeholder="hello@skuauditpro.com" />
+            </label>
+            <label>
+              地址/地区
+              <input id="company-address" type="text" placeholder="Hong Kong / Remote" />
+            </label>
+          </div>
+          <label>
+            付款说明
+            <textarea id="company-payment" rows="3" placeholder="银行转账、FPS、备注格式等"></textarea>
+          </label>
+          <label class="file-button company-logo-button">
+            上传 Logo
+            <input id="company-logo" type="file" accept="image/*" />
+          </label>
+          <div class="company-logo-preview" id="company-logo-preview"></div>
+          <button class="button secondary" type="submit">保存公司资料</button>
+          <p class="form-note" id="company-message"></p>
+        </form>
+
+        <div class="two-column-admin">
+          <div>
+            <h3>报价列表</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>报价号</th>
+                    <th>客户</th>
+                    <th>服务</th>
+                    <th>开通套餐</th>
+                    <th>金额</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-quotes"></tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <h3>发票列表</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>发票号</th>
+                    <th>客户</th>
+                    <th>开通套餐</th>
+                    <th>金额</th>
+                    <th>到期</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-invoices"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">用户套餐</p>
+          <h2>手动升级客户账号。</h2>
+          <p>客户通过微信、邮箱、银行卡或香港账户付款后，可以在这里直接给对应登录账号开通套餐。</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>用户</th>
+                <th>当前套餐</th>
+                <th>注册方式</th>
+                <th>注册时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users"></tbody>
+          </table>
+        </div>
       </section>
 
       <section class="section">
@@ -68,10 +228,14 @@
             <thead>
               <tr>
                 <th>称呼</th>
+                <th>报告编号</th>
                 <th>联系方式</th>
                 <th>平台</th>
                 <th>SKU 数</th>
                 <th>痛点</th>
+                <th>来源</th>
+                <th>状态</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody id="admin-leads"></tbody>

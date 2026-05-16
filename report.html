@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>报告查询 | SKUAuditPro</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">
+        <span class="brand-mark">SA</span>
+        <span>SKUAuditPro</span>
+      </a>
+      <nav class="nav-links">
+        <a href="/">首页</a>
+        <a href="sample-report.html">报告样张</a>
+        <a href="contact.html">联系</a>
+        <a href="/login">登录</a>
+      </nav>
+    </header>
+
+    <main class="report-page">
+      <section class="report-hero">
+        <div>
+          <p class="eyebrow">SKU Audit Report</p>
+          <h1>SKU 利润体检报告</h1>
+          <p>
+            输入报告编号后，可查看体检进度、核心结论、SKU 风险排序和下一步建议。报告可直接打印或保存为 PDF。
+          </p>
+        </div>
+        <div class="report-brand-card">
+          <span>Powered by</span>
+          <strong>SKUAuditPro</strong>
+          <p>不需要店铺后台权限，只基于客户主动提供的数据生成经营预判。</p>
+        </div>
+      </section>
+
+      <section class="report-shell">
+        <div class="section-heading">
+          <p class="eyebrow">Report Lookup</p>
+          <h2>输入报告编号</h2>
+        </div>
+        <p>
+          提交免费体检需求后，系统会生成一个报告编号。你可以把这个页面发给客户，让客户用编号查看进度。
+        </p>
+
+        <form class="report-lookup-form" id="report-form">
+          <label>
+            报告编号
+            <input id="report-id" type="text" placeholder="例如：SA-20260516-1A2B3C" required />
+          </label>
+          <button class="button primary" type="submit">查询报告</button>
+        </form>
+
+        <div class="report-document" id="report-result">
+          <p class="form-note">请输入报告编号后查询。</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="report.js"></script>
+  </body>
+</html>

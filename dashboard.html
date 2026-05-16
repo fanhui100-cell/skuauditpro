@@ -3,21 +3,23 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>用户后台 | SKUProfit</title>
+    <title>账户中心 | SKUAuditPro</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="site-header">
       <a class="brand" href="/">
-        <span class="brand-mark">SP</span>
-        <span>SKUProfit</span>
+        <span class="brand-mark">SA</span>
+        <span>SKUAuditPro</span>
       </a>
-      <nav class="nav-links" aria-label="后台导航">
+      <nav class="nav-links" aria-label="账户导航">
         <a href="/">免费页面</a>
+        <a href="#history">计算历史</a>
+        <a href="#account">账户设置</a>
+        <a href="#billing">报价/发票</a>
         <a href="#pricing">套餐</a>
         <a href="#orders">订单</a>
         <a href="sample-report.html">报告样张</a>
-        <a href="admin.html">管理后台</a>
         <button class="button ghost" id="logout" type="button">退出</button>
       </nav>
     </header>
@@ -25,14 +27,42 @@
     <main class="dashboard">
       <section class="section split dashboard-hero">
         <div>
-          <p class="eyebrow">用户后台</p>
+          <p class="eyebrow">账户中心</p>
           <h1 id="welcome">欢迎回来</h1>
-          <p>这里用于管理你的利润体检服务、订单和付款状态。当前版本先跑通商业闭环，后续可接真实 Stripe / 微信 / Google。</p>
+          <p>这里用于管理你的利润体检服务、计算历史、报价、发票和付款状态。</p>
         </div>
         <div class="account-card">
           <span>当前套餐</span>
           <strong id="current-plan">免费测 3 个 SKU</strong>
           <p id="account-email">-</p>
+        </div>
+      </section>
+
+      <section class="section onboarding-card" id="onboarding" hidden>
+        <div class="section-heading">
+          <p class="eyebrow">新用户引导</p>
+          <h2>3 步跑完第一次 SKU 利润体检。</h2>
+        </div>
+        <div class="deliverable-grid">
+          <article>
+            <span>01</span>
+            <h3>先算一个 SKU</h3>
+            <p>回到首页输入售价、采购、物流、佣金、广告和退货率。</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>保存到记录</h3>
+            <p>点击“保存到我的记录”，以后可以回看、编辑和分享。</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>升级批量体检</h3>
+            <p>当有 20 个 SKU 要排查时，使用 CSV 批量体检和报告交付。</p>
+          </article>
+        </div>
+        <div class="result-actions">
+          <a class="button primary" href="/#calculator">去计算第一个 SKU</a>
+          <button class="button secondary" id="finish-onboarding" type="button">我知道了</button>
         </div>
       </section>
 
@@ -42,6 +72,124 @@
           <h2>从免费体检到整店诊断。</h2>
         </div>
         <div class="pricing-grid" id="plan-list"></div>
+      </section>
+
+      <section class="section" id="history">
+        <div class="section-heading">
+          <p class="eyebrow">我的计算历史</p>
+          <h2>回看之前保存过的 SKU 利润测算。</h2>
+          <p>在首页计算器里点击“保存到我的记录”后，记录会出现在这里。</p>
+        </div>
+        <div class="result-actions">
+          <button class="button secondary" id="export-history" type="button">导出历史 CSV</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>SKU</th>
+                <th>平台</th>
+                <th>净利润</th>
+                <th>净利率</th>
+                <th>保本售价</th>
+                <th>风险</th>
+                <th>建议</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="calculation-history"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section split" id="account">
+        <div>
+          <p class="eyebrow">账户设置</p>
+          <h2>管理密码和账户数据。</h2>
+          <p>你可以在这里更新邮箱密码，或在需要时注销账户。注销后会删除你的订单和计算历史。</p>
+        </div>
+        <div class="settings-stack">
+          <form class="lead-form" id="password-form">
+            <h3>修改密码</h3>
+            <label>
+              当前密码
+              <input id="current-password" type="password" placeholder="当前密码" />
+            </label>
+            <label>
+              新密码
+              <input id="new-password" type="password" minlength="6" required />
+            </label>
+            <button class="button primary full" type="submit">更新密码</button>
+            <p class="form-note" id="password-note"></p>
+          </form>
+
+          <form class="lead-form danger-zone" id="delete-account-form">
+            <h3>注销账户</h3>
+            <p class="form-note">输入 DELETE 确认注销。此操作会删除当前账户、订单和计算历史。</p>
+            <label>
+              确认文字
+              <input id="delete-confirm" type="text" placeholder="DELETE" required />
+            </label>
+            <button class="button secondary full" type="submit">注销账户</button>
+            <p class="form-note" id="delete-note"></p>
+          </form>
+        </div>
+      </section>
+
+      <section class="section" id="billing">
+        <div class="section-heading">
+          <p class="eyebrow">Quote / Invoice</p>
+          <h2>报价、发票和付款状态。</h2>
+          <p>顾问给你创建报价后，会出现在这里。接受报价后会自动生成对应 Invoice。</p>
+        </div>
+        <div class="report-metric-strip billing-overview">
+          <div><span>总应付</span><strong id="billing-total">HK$0</strong><small>全部发票</small></div>
+          <div><span>已支付</span><strong id="billing-paid">HK$0</strong><small>Paid</small></div>
+          <div><span>待支付</span><strong id="billing-pending">HK$0</strong><small>Pending</small></div>
+          <div><span>逾期</span><strong id="billing-overdue">HK$0</strong><small>Overdue</small></div>
+          <div><span>报价数</span><strong id="billing-quotes-count">0</strong><small>Quotes</small></div>
+        </div>
+        <div class="two-column-admin">
+          <div>
+            <h3>我的报价</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>报价号</th>
+                    <th>服务</th>
+                    <th>开通套餐</th>
+                    <th>金额</th>
+                    <th>有效期</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="quote-list"></tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <h3>我的发票</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>发票号</th>
+                    <th>服务</th>
+                    <th>开通套餐</th>
+                    <th>金额</th>
+                    <th>到期日</th>
+                    <th>状态</th>
+                    <th>链接</th>
+                  </tr>
+                </thead>
+                <tbody id="invoice-list"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="section split" id="checkout">
@@ -73,7 +221,7 @@
       <section class="section" id="orders">
         <div class="section-heading">
           <p class="eyebrow">我的订单</p>
-          <h2>提交付款备注后，管理员审核开通。</h2>
+          <h2>提交付款备注后，我们会核对并开通服务。</h2>
         </div>
         <div class="table-wrap">
           <table>

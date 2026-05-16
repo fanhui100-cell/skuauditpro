@@ -77,28 +77,28 @@ const paymentMethods = [
     name: "国内银行卡转账",
     currency: "CNY",
     status: "ready",
-    note: "适合早期人工收款。客户提交付款备注后，你在管理后台审核开通。",
+    note: "适合人民币付款。提交付款备注后，我们会核对收款并开通对应服务。",
   },
   {
     id: "manual-hk-bank",
     name: "香港银行卡 / FPS 转账",
     currency: "HKD",
     status: "ready",
-    note: "适合香港账户收款。早期可用人工审核，后续再接 Stripe HK。",
+    note: "适合香港账户付款，可通过银行转账或 FPS 完成付款确认。",
   },
   {
     id: "stripe-hk",
     name: "Stripe HK：信用卡 / Alipay / WeChat Pay",
     currency: "HKD/USD",
     status: process.env.STRIPE_SECRET_KEY ? "configurable" : "needs_keys",
-    note: "需要 Stripe 香港账户、密钥和 Price ID。代码已预留 Checkout 接口。",
+    note: "支持信用卡和本地钱包付款，开通后可跳转到安全支付页面完成结算。",
   },
   {
     id: "manual-service",
     name: "人工对公/服务商代收",
     currency: "CNY/HKD",
     status: "ready",
-    note: "适合先通过货代、海外仓、培训服务商分销，按订单返佣。",
+    note: "适合服务商、团队或对公客户统一结算，付款后按约定开通服务。",
   },
 ];
 

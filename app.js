@@ -9,6 +9,12 @@ const clearBulkButton = document.querySelector("#clear-bulk");
 const exportBulkButton = document.querySelector("#export-bulk");
 const printReportButton = document.querySelector("#print-report");
 const copySingleButton = document.querySelector("#copy-single-report");
+const saveCalculationButton = document.querySelector("#save-calculation");
+const saveCalculationNote = document.querySelector("#save-calculation-note");
+const downloadTemplateButton = document.querySelector("#download-template");
+const uploadCsvInput = document.querySelector("#upload-csv");
+const leadReportLink = document.querySelector("#lead-report-link");
+const bulkNote = document.querySelector("#bulk-note");
 const isEnglish = document.documentElement.lang.startsWith("en");
 
 const money = new Intl.NumberFormat("en-US", {
@@ -46,6 +52,14 @@ const text = isEnglish
       leadCount: (count) => `${count} leads`,
       leadSaved: "Saved. You can now follow up and ask for basic data from 3 SKUs.",
       noLeads: "No leads to export yet",
+      templateFile: "skuauditpro-sku-template.csv",
+      templateUploaded: "CSV uploaded. Review the rows, then generate the report.",
+      reportCreated: (id) => `Report ID: ${id}. Track it here:`,
+      reportPending: "Saved locally. Start the server to create a report ID.",
+      savingCalculation: "Saving...",
+      calculationSaved: "Saved to your dashboard.",
+      loginToSave: "Please log in before saving calculation history.",
+      saveFailed: "Could not save. Please try again.",
     }
   : {
       healthy: "健康",
@@ -76,10 +90,19 @@ const text = isEnglish
       leadCount: (count) => `当前 ${count} 条线索`,
       leadSaved: "已保存。现在可以联系对方要 3 个 SKU 的基础数据。",
       noLeads: "当前没有可导出的线索",
+      templateFile: "skuauditpro-sku-template.csv",
+      templateUploaded: "CSV 已上传。确认数据后可以生成体检报告。",
+      reportCreated: (id) => `报告编号：${id}。客户可用这个链接查看进度：`,
+      reportPending: "已保存在本地。启动后端服务后会自动生成报告编号。",
+      savingCalculation: "正在保存...",
+      calculationSaved: "已保存到你的计算记录。",
+      loginToSave: "请先登录，再保存计算记录。",
+      saveFailed: "保存失败，请稍后再试。",
     };
 
 const fields = [
   "platform",
+  "market",
   "sku-name",
   "price",
   "cost",
@@ -93,6 +116,60 @@ const fields = [
   "other-cost",
 ];
 
+const platformTemplates = {
+  "TikTok Shop": {
+    platformRate: 6,
+    paymentRate: 2.9,
+    affiliateRate: 15,
+    returnRate: 8,
+    adCost: 2.5,
+    otherCost: 0.6,
+    note: isEnglish
+      ? "TikTok Shop template: marketplace fee, payment fee, creator commission and ad CPA assumptions."
+      : "TikTok Shop 模板：已带入平台费、支付费、达人佣金和广告 CPA 假设。",
+  },
+  Shopify: {
+    platformRate: 2,
+    paymentRate: 2.9,
+    affiliateRate: 0,
+    returnRate: 7,
+    adCost: 3.2,
+    otherCost: 0.5,
+    note: isEnglish
+      ? "Shopify template: lower platform fee, higher paid traffic pressure and standard payment fee."
+      : "Shopify 模板：平台费较低，但广告获客压力更高，支付费按常见水平估算。",
+  },
+  Amazon: {
+    platformRate: 15,
+    paymentRate: 0,
+    affiliateRate: 0,
+    returnRate: 8,
+    adCost: 2.8,
+    otherCost: 1.2,
+    note: isEnglish
+      ? "Amazon template: referral-style fee assumption plus fulfillment/other cost buffer."
+      : "Amazon 模板：按销售佣金类费用和履约/其他成本缓冲估算。",
+  },
+  Walmart: {
+    platformRate: 15,
+    paymentRate: 0,
+    affiliateRate: 0,
+    returnRate: 7,
+    adCost: 2.4,
+    otherCost: 0.8,
+    note: isEnglish
+      ? "Walmart template: referral-style fee assumption with moderate return and ad pressure."
+      : "Walmart 模板：按销售佣金类费用、适中退货和广告压力估算。",
+  },
+};
+
+const marketProfiles = [
+  { id: "US", name: isEnglish ? "United States" : "美国", shippingMultiplier: 1, dutyMultiplier: 1 },
+  { id: "UK", name: isEnglish ? "United Kingdom" : "英国", shippingMultiplier: 1.12, dutyMultiplier: 1.18 },
+  { id: "DE", name: isEnglish ? "Germany" : "德国", shippingMultiplier: 1.18, dutyMultiplier: 1.22 },
+  { id: "CA", name: isEnglish ? "Canada" : "加拿大", shippingMultiplier: 1.1, dutyMultiplier: 1.12 },
+];
+
 const getNumber = (id) => {
   const value = Number.parseFloat(document.querySelector(`#${id}`).value);
   return Number.isFinite(value) ? value : 0;
@@ -100,6 +177,8 @@ const getNumber = (id) => {
 
 const getLeads = () => JSON.parse(localStorage.getItem("skuprofit-leads") || "[]");
 const saveLeads = (leads) => localStorage.setItem("skuprofit-leads", JSON.stringify(leads));
+const lastInputsKey = "skuauditpro-last-inputs";
+const editInputsKey = "skuauditpro-edit-inputs";
 
 const demoCsv = isEnglish
   ? `sku,platform,price,cost,shipping,duty,platformRate,paymentRate,affiliateRate,adCost,returnRate,otherCost
@@ -174,6 +253,76 @@ function calculateProfit() {
   });
 }
 
+function getCurrentInputs() {
+  return {
+    platform: document.querySelector("#platform").value,
+    market: document.querySelector("#market")?.value || "US",
+    sku: document.querySelector("#sku-name").value.trim(),
+    price: getNumber("price"),
+    cost: getNumber("cost"),
+    shipping: getNumber("shipping"),
+    duty: getNumber("duty"),
+    platformRate: getNumber("platform-rate"),
+    paymentRate: getNumber("payment-rate"),
+    affiliateRate: getNumber("affiliate-rate"),
+    adCost: getNumber("ad-cost"),
+    returnRate: getNumber("return-rate"),
+    otherCost: getNumber("other-cost"),
+  };
+}
+
+function fillInputs(inputs) {
+  if (!inputs) {
+    return;
+  }
+
+  const map = {
+    platform: "platform",
+    market: "market",
+    sku: "sku-name",
+    price: "price",
+    cost: "cost",
+    shipping: "shipping",
+    duty: "duty",
+    platformRate: "platform-rate",
+    paymentRate: "payment-rate",
+    affiliateRate: "affiliate-rate",
+    adCost: "ad-cost",
+    returnRate: "return-rate",
+    otherCost: "other-cost",
+  };
+
+  Object.entries(map).forEach(([key, id]) => {
+    const field = document.querySelector(`#${id}`);
+    if (field && inputs[key] !== undefined) {
+      field.value = inputs[key];
+    }
+  });
+}
+
+function rememberCurrentInputs() {
+  localStorage.setItem(lastInputsKey, JSON.stringify(getCurrentInputs()));
+}
+
+function hydrateSavedInputs() {
+  const editInputs = localStorage.getItem(editInputsKey);
+  const lastInputs = localStorage.getItem(lastInputsKey);
+  const raw = editInputs || lastInputs;
+  if (!raw) {
+    return;
+  }
+
+  try {
+    fillInputs(JSON.parse(raw));
+    if (editInputs) {
+      localStorage.removeItem(editInputsKey);
+      document.querySelector("#calculator").scrollIntoView({ behavior: "smooth" });
+    }
+  } catch {
+    localStorage.removeItem(editInputsKey);
+  }
+}
+
 function buildAdvice(result) {
   const advice = [];
 
@@ -208,6 +357,15 @@ function formatPercent(value) {
   return `${Math.round(value * 1000) / 10}%`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function getRisk(result) {
   if (result.margin < 0) {
     return { label: text.loss, className: "bad", rank: 3 };
@@ -218,6 +376,167 @@ function getRisk(result) {
   }
 
   return { label: text.healthy, className: "good", rank: 1 };
+}
+
+function applyPlatformTemplate() {
+  const platform = document.querySelector("#platform").value;
+  const template = platformTemplates[platform];
+  if (!template) {
+    renderTemplateNote();
+    return;
+  }
+
+  const pairs = {
+    "platform-rate": template.platformRate,
+    "payment-rate": template.paymentRate,
+    "affiliate-rate": template.affiliateRate,
+    "ad-cost": template.adCost,
+    "return-rate": template.returnRate,
+    "other-cost": template.otherCost,
+  };
+
+  Object.entries(pairs).forEach(([id, value]) => {
+    const field = document.querySelector(`#${id}`);
+    if (field) {
+      field.value = value;
+    }
+  });
+
+  renderResult();
+  rememberCurrentInputs();
+}
+
+function renderTemplateNote() {
+  const platform = document.querySelector("#platform").value;
+  const template = platformTemplates[platform];
+  const title = document.querySelector("#fee-template-title");
+  const note = document.querySelector("#fee-template-note");
+  if (!title || !note) {
+    return;
+  }
+
+  title.textContent = platform;
+  note.textContent =
+    template?.note ||
+    (isEnglish
+      ? "Custom platform: edit each fee input manually to match your current channel."
+      : "自定义平台：请手动调整各项费率，让它更接近你的实际渠道。");
+}
+
+function renderMarketComparison(inputs) {
+  const container = document.querySelector("#market-comparison-results");
+  if (!container) {
+    return;
+  }
+
+  const rows = marketProfiles
+    .map((market) => {
+      const result = calculateFromData({
+        ...inputs,
+        shipping: inputs.shipping * market.shippingMultiplier,
+        duty: inputs.duty * market.dutyMultiplier,
+      });
+      return { market, result, risk: getRisk(result) };
+    })
+    .sort((a, b) => b.result.margin - a.result.margin);
+
+  container.innerHTML = rows
+    .map(
+      (row) => `
+        <div class="mini-row">
+          <span>${escapeHtml(row.market.name)}</span>
+          <strong>${money.format(row.result.netProfit)}</strong>
+          <span>${formatPercent(row.result.margin)}</span>
+          <span class="risk-chip ${row.risk.className}">${row.risk.label}</span>
+        </div>
+      `,
+    )
+    .join("");
+}
+
+function renderSensitivity(inputs) {
+  const container = document.querySelector("#sensitivity-results");
+  if (!container) {
+    return;
+  }
+
+  const scenarios = [
+    {
+      name: isEnglish ? "Ad CPA +20%" : "广告 CPA +20%",
+      data: { ...inputs, adCost: inputs.adCost * 1.2 },
+    },
+    {
+      name: isEnglish ? "Return rate +5 pts" : "退货率 +5 个点",
+      data: { ...inputs, returnRate: inputs.returnRate + 5 },
+    },
+    {
+      name: isEnglish ? "Commission +5 pts" : "佣金 +5 个点",
+      data: { ...inputs, affiliateRate: inputs.affiliateRate + 5 },
+    },
+    {
+      name: isEnglish ? "Shipping +15%" : "物流 +15%",
+      data: { ...inputs, shipping: inputs.shipping * 1.15 },
+    },
+  ];
+
+  container.innerHTML = scenarios
+    .map((scenario) => {
+      const result = calculateFromData(scenario.data);
+      const risk = getRisk(result);
+      return `
+        <div class="mini-row">
+          <span>${escapeHtml(scenario.name)}</span>
+          <strong>${money.format(result.netProfit)}</strong>
+          <span>${formatPercent(result.margin)}</span>
+          <span class="risk-chip ${risk.className}">${risk.label}</span>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderComplianceHints(inputs, result) {
+  const list = document.querySelector("#compliance-list");
+  if (!list) {
+    return;
+  }
+
+  const sku = `${inputs.sku} ${inputs.platform}`.toLowerCase();
+  const hints = [];
+  const pushHint = (value) => {
+    if (!hints.includes(value)) {
+      hints.push(value);
+    }
+  };
+
+  if (/led|lamp|light|battery|charger|usb|electronic|电|灯|充电|电池|补光/.test(sku)) {
+    pushHint(isEnglish ? "Electronics: check labeling, safety certification and battery/adapter rules." : "带电/电子类：注意标签、安全认证、电池或适配器规则。");
+  }
+  if (/kids|baby|toy|child|儿童|婴儿|玩具/.test(sku)) {
+    pushHint(isEnglish ? "Children's products: check age labeling, safety testing and marketplace restrictions." : "儿童用品：注意年龄标签、安全测试和平台限制。");
+  }
+  if (/cosmetic|cream|makeup|skin|化妆|护肤|面霜/.test(sku)) {
+    pushHint(isEnglish ? "Cosmetics: verify ingredient, labeling and importer responsibility before scaling." : "化妆品/护肤类：放量前确认成分、标签和进口责任。");
+  }
+  if (/food|kitchen|silicone|cup|食品|厨房|硅胶|杯/.test(sku)) {
+    pushHint(isEnglish ? "Food-contact items: check material declaration and food-contact compliance." : "食品接触类：注意材质声明和食品接触合规要求。");
+  }
+  if (result.margin < 0.12) {
+    pushHint(isEnglish ? "Commercial risk: margin is thin, so compliance or return issues can quickly turn this SKU unprofitable." : "经营风险：利润较薄，合规或退货问题会很快把该 SKU 拉成亏损。");
+  }
+  if (!hints.length) {
+    pushHint(isEnglish ? "No obvious category alert from the SKU name. Use this as a screening hint, not formal customs or legal advice." : "从 SKU 名称暂未识别明显品类风险。本提示仅作初筛，不替代正式报关、税务或法律意见。");
+  }
+
+  list.innerHTML = hints.map((hint) => `<li>${escapeHtml(hint)}</li>`).join("");
+}
+
+function renderProfessionalInsights(result) {
+  const inputs = getCurrentInputs();
+  renderTemplateNote();
+  renderMarketComparison(inputs);
+  renderSensitivity(inputs);
+  renderComplianceHints(inputs, result);
 }
 
 function renderResult() {
@@ -252,6 +571,8 @@ function renderResult() {
     li.textContent = item;
     adviceList.append(li);
   });
+
+  renderProfessionalInsights(result);
 }
 
 function parseCsv(text) {
@@ -299,8 +620,8 @@ function renderBulkReport() {
   latestBulkRows.forEach((row) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${row.sku || text.unnamedSku}</td>
-      <td>${row.platform || "-"}</td>
+      <td>${escapeHtml(row.sku || text.unnamedSku)}</td>
+      <td>${escapeHtml(row.platform || "-")}</td>
       <td>${money.format(row.result.netProfit)}</td>
       <td>${formatPercent(row.result.margin)}</td>
       <td>${money.format(row.result.breakEven)}</td>
@@ -350,7 +671,11 @@ function exportBulkReport() {
       .join(","),
   );
   const csv = [header.join(","), ...rows].join("\n");
-  downloadCsv(csv, "skuprofit-bulk-report.csv");
+  downloadCsv(csv, "skuauditpro-bulk-report.csv");
+}
+
+function downloadTemplate() {
+  downloadCsv(demoCsv, text.templateFile);
 }
 
 function downloadCsv(csv, filename) {
@@ -363,12 +688,12 @@ function downloadCsv(csv, filename) {
   URL.revokeObjectURL(url);
 }
 
-async function copyText(text, successText) {
+async function copyText(value, successText) {
   try {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(value);
   } catch {
     const textarea = document.createElement("textarea");
-    textarea.value = text;
+    textarea.value = value;
     document.body.append(textarea);
     textarea.select();
     document.execCommand("copy");
@@ -386,12 +711,14 @@ async function copyText(text, successText) {
 function buildSingleReportText() {
   const sku = document.querySelector("#sku-name").value.trim() || text.unnamedSku;
   const platform = document.querySelector("#platform").value;
+  const market = marketProfiles.find((item) => item.id === document.querySelector("#market")?.value)?.name || "US";
   const result = calculateProfit();
   const risk = getRisk(result);
 
   return `${text.singleReportTitle}
 ${text.sku}: ${sku}
 ${text.platform}: ${platform}
+${isEnglish ? "Market" : "目标市场"}: ${market}
 ${text.netProfit}: ${money.format(result.netProfit)}
 ${text.margin}: ${formatPercent(result.margin)}
 ${text.breakEven}: ${money.format(result.breakEven)}
@@ -401,11 +728,100 @@ ${text.recommendations}:
 ${buildAdvice(result).map((item) => `- ${item}`).join("\n")}`;
 }
 
+async function saveCalculation() {
+  const inputs = getCurrentInputs();
+  const result = calculateProfit();
+  const risk = getRisk(result);
+  const recommendations = buildAdvice(result);
+
+  saveCalculationNote.textContent = text.savingCalculation;
+
+  try {
+    const response = await fetch("/api/calculations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sku: inputs.sku || text.unnamedSku,
+        platform: inputs.platform,
+        inputs,
+        result: {
+          netProfit: result.netProfit,
+          margin: result.margin,
+          breakEven: result.breakEven,
+          maxAffiliateRate: result.maxAffiliateRate,
+          totalCost: result.totalCost,
+        },
+        risk: risk.label,
+        recommendations,
+      }),
+    });
+
+    if (response.status === 401) {
+      saveCalculationNote.innerHTML = `${text.loginToSave} <a href="/login">Login</a>`;
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error("save failed");
+    }
+
+    rememberCurrentInputs();
+    saveCalculationNote.innerHTML = `${text.calculationSaved} <a href="/dashboard.html#history">${isEnglish ? "View history" : "查看历史记录"}</a>`;
+  } catch {
+    saveCalculationNote.textContent = text.saveFailed;
+  }
+}
+
+async function loadStats() {
+  const formatStat = (value) => {
+    const number = Number(value) || 0;
+    if (number >= 1000) {
+      return `${Math.floor(number / 100) / 10}k+`;
+    }
+    if (number >= 100) {
+      return `${Math.floor(number / 10) * 10}+`;
+    }
+    return `${number}+`;
+  };
+
+  try {
+    const response = await fetch("/api/stats");
+    if (!response.ok) {
+      return;
+    }
+    const stats = await response.json();
+    document.querySelector("#stat-users").textContent = formatStat(stats.users);
+    document.querySelector("#stat-calculations").textContent = formatStat(stats.calculations);
+  } catch {
+    // Static preview keeps the default counters.
+  }
+}
+
 function updateLeadCount() {
   document.querySelector("#lead-count").textContent = text.leadCount(getLeads().length);
 }
 
-function handleLeadSubmit(event) {
+function showReportLink(lead) {
+  if (!leadReportLink || !lead?.reportId) {
+    if (leadReportLink) {
+      leadReportLink.textContent = text.reportPending;
+    }
+    return;
+  }
+
+  const reportUrl = `${window.location.origin}/report.html?id=${encodeURIComponent(lead.reportId)}`;
+  leadReportLink.innerHTML = "";
+  const span = document.createElement("span");
+  span.textContent = `${text.reportCreated(lead.reportId)} `;
+  const link = document.createElement("a");
+  link.href = reportUrl;
+  link.textContent = reportUrl;
+  link.target = "_blank";
+  link.rel = "noreferrer";
+  leadReportLink.append(span, link);
+}
+
+async function handleLeadSubmit(event) {
   event.preventDefault();
 
   const lead = {
@@ -422,13 +838,23 @@ function handleLeadSubmit(event) {
   saveLeads(leads);
   updateLeadCount();
 
-  fetch("/api/leads", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(lead),
-  }).catch(() => {
-    // Static-file previews still keep leads in localStorage.
-  });
+  try {
+    const response = await fetch("/api/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(lead),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      Object.assign(lead, data.lead);
+      saveLeads(leads);
+      showReportLink(data.lead);
+    } else {
+      showReportLink(null);
+    }
+  } catch {
+    showReportLink(null);
+  }
 
   leadForm.reset();
   document.querySelector("#lead-note").textContent = text.leadSaved;
@@ -468,8 +894,13 @@ form.addEventListener("submit", (event) => {
 });
 
 fields.forEach((id) => {
-  document.querySelector(`#${id}`).addEventListener("input", renderResult);
+  document.querySelector(`#${id}`).addEventListener("input", () => {
+    renderResult();
+    rememberCurrentInputs();
+  });
 });
+
+document.querySelector("#platform").addEventListener("change", applyPlatformTemplate);
 
 leadForm.addEventListener("submit", handleLeadSubmit);
 loadDemoButton.addEventListener("click", () => {
@@ -484,8 +915,20 @@ clearBulkButton.addEventListener("click", () => {
 runBulkButton.addEventListener("click", renderBulkReport);
 exportBulkButton.addEventListener("click", exportBulkReport);
 printReportButton.addEventListener("click", () => window.print());
+downloadTemplateButton.addEventListener("click", downloadTemplate);
+uploadCsvInput.addEventListener("change", async () => {
+  const file = uploadCsvInput.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  bulkCsv.value = await file.text();
+  bulkNote.textContent = text.templateUploaded;
+  renderBulkReport();
+});
 copySingleButton.dataset.original = copySingleButton.textContent;
 copySingleButton.addEventListener("click", () => copyText(buildSingleReportText(), copySingleButton));
+saveCalculationButton.addEventListener("click", saveCalculation);
 if (exportButton) {
   exportButton.addEventListener("click", exportLeads);
 }
@@ -494,7 +937,9 @@ if (clearButton) {
   clearButton.addEventListener("click", clearLeads);
 }
 
+hydrateSavedInputs();
 renderResult();
 updateLeadCount();
 bulkCsv.value = demoCsv;
 renderBulkReport();
+loadStats();

@@ -71,6 +71,13 @@ const plans = [
   },
 ];
 
+const planQuotas = {
+  "free-3-sku": 5,
+  "audit-20-sku": 20,
+  "store-audit": 100,
+  "pro-monthly": 300,
+};
+
 const paymentMethods = [
   {
     id: "manual-cn-bank",
@@ -132,6 +139,7 @@ async function loadDb() {
       orders: [],
       leads: [],
       calculations: [],
+      visitors: [],
       quotes: [],
       invoices: [],
       settings: { company: defaultCompanySettings },
@@ -144,6 +152,7 @@ async function loadDb() {
   db.orders ||= [];
   db.leads ||= [];
   db.calculations ||= [];
+  db.visitors ||= [];
   db.quotes ||= [];
   db.invoices ||= [];
   db.settings ||= {};
@@ -251,14 +260,58 @@ function publicUser(user) {
     email: user.email,
     provider: user.provider,
     planId: user.planId || "free-3-sku",
+    quota: quotaForPlan(user.planId || "free-3-sku"),
     onboarded: Boolean(user.onboarded),
     createdAt: user.createdAt,
+  };
+}
+
+function quotaForPlan(planId) {
+  return planQuotas[planId] ?? planQuotas["free-3-sku"];
+}
+
+function usageMonth(date = new Date()) {
+  return date.toISOString().slice(0, 7);
+}
+
+function requestFingerprint(request) {
+  const forwarded = String(request.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  const ip = forwarded || request.socket?.remoteAddress || "";
+  const ua = String(request.headers["user-agent"] || "").slice(0, 200);
+  return crypto.createHash("sha256").update(`${ip}|${ua}`).digest("hex");
+}
+
+function normalizeVisitorId(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, 80);
+}
+
+function usageForIdentity(db, { userId = "", visitorId = "" }, month = usageMonth()) {
+  return db.calculations.filter((item) => {
+    if (String(item.usageMonth || item.createdAt?.slice(0, 7) || "") !== month) {
+      return false;
+    }
+    return userId ? item.userId === userId : item.visitorId === visitorId;
+  }).length;
+}
+
+function quotaStatus(db, identity, planId = "free-3-sku") {
+  const limit = quotaForPlan(planId);
+  const used = usageForIdentity(db, identity);
+  return {
+    limit,
+    used,
+    remaining: Math.max(0, limit - used),
+    month: usageMonth(),
   };
 }
 
 function publicCalculation(calculation) {
   return {
     id: calculation.id,
+    reportId: calculation.reportId || "",
     shareToken: calculation.shareToken,
     sku: calculation.sku,
     platform: calculation.platform,
@@ -298,6 +351,11 @@ function reportSummaryFromCalculations(calculations) {
 function createReportId() {
   const date = new Date().toISOString().slice(0, 10).replaceAll("-", "");
   return `SA-${date}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+}
+
+function createSkuReportId() {
+  const date = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+  return `SKU-${date}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 }
 
 function createQuoteId() {
@@ -520,12 +578,35 @@ async function handleApi(request, response, url) {
   const user = await currentUser(request, db);
 
   if (request.method === "GET" && url.pathname === "/api/me") {
-    sendJson(response, 200, { user: publicUser(user) });
+    sendJson(response, 200, {
+      user: publicUser(user),
+      usage: user ? quotaStatus(db, { userId: user.id }, user.planId || "free-3-sku") : null,
+    });
     return true;
   }
 
   if (request.method === "GET" && url.pathname === "/api/plans") {
     sendJson(response, 200, { plans, paymentMethods });
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/usage") {
+    const visitorId = normalizeVisitorId(url.searchParams.get("visitorId"));
+    if (user) {
+      sendJson(response, 200, {
+        usage: quotaStatus(db, { userId: user.id }, user.planId || "free-3-sku"),
+        user: publicUser(user),
+      });
+      return true;
+    }
+    if (!visitorId) {
+      sendJson(response, 400, { error: "缺少访客 ID。" });
+      return true;
+    }
+    sendJson(response, 200, {
+      usage: quotaStatus(db, { visitorId }, "free-3-sku"),
+      user: null,
+    });
     return true;
   }
 
@@ -819,6 +900,70 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  if (request.method === "POST" && url.pathname === "/api/audits") {
+    const body = await readBody(request);
+    const visitorId = normalizeVisitorId(body.visitorId);
+    const identity = user ? { userId: user.id } : { visitorId };
+    const planId = user?.planId || "free-3-sku";
+
+    if (!user && !visitorId) {
+      sendJson(response, 400, { error: "缺少访客 ID。" });
+      return true;
+    }
+
+    const usage = quotaStatus(db, identity, planId);
+    if (usage.remaining <= 0) {
+      sendJson(response, 403, {
+        error: user ? "本月套餐额度已用完，请升级套餐或下月继续。" : "免费额度已用完，请登录后继续生成利润体检。",
+        usage,
+        loginRequired: !user,
+      });
+      return true;
+    }
+
+    if (!user) {
+      const fingerprint = requestFingerprint(request);
+      let visitor = db.visitors.find((item) => item.visitorId === visitorId);
+      if (!visitor) {
+        visitor = {
+          id: crypto.randomUUID(),
+          visitorId,
+          fingerprint,
+          createdAt: new Date().toISOString(),
+        };
+        db.visitors.push(visitor);
+      }
+      visitor.fingerprint = fingerprint;
+      visitor.lastSeenAt = new Date().toISOString();
+    }
+
+    const calculation = {
+      id: crypto.randomUUID(),
+      reportId: createSkuReportId(),
+      userId: user?.id || "",
+      visitorId: user ? "" : visitorId,
+      shareToken: crypto.randomBytes(12).toString("hex"),
+      sku: String(body.sku || "未命名 SKU").slice(0, 120),
+      platform: String(body.platform || "-").slice(0, 80),
+      inputs: body.inputs || {},
+      result: body.result || {},
+      risk: String(body.risk || "-").slice(0, 40),
+      recommendations: Array.isArray(body.recommendations) ? body.recommendations.slice(0, 8) : [],
+      driver: body.driver || {},
+      source: user ? "logged-in-audit" : "anonymous-audit",
+      usageMonth: usageMonth(),
+      createdAt: new Date().toISOString(),
+    };
+    db.calculations.push(calculation);
+    await saveDb(db);
+    sendJson(response, 201, {
+      calculation: publicCalculation(calculation),
+      usage: quotaStatus(db, identity, planId),
+      reportUrl: `/report.html?id=${encodeURIComponent(calculation.reportId)}`,
+    });
+    return true;
+  }
+
   if (request.method === "POST" && url.pathname === "/api/calculations") {
     if (!user) {
       sendJson(response, 401, { error: "请先登录后保存计算记录。" });
@@ -829,6 +974,7 @@ async function handleApi(request, response, url) {
     const calculation = {
       id: crypto.randomUUID(),
       userId: user.id,
+      reportId: createSkuReportId(),
       shareToken: crypto.randomBytes(12).toString("hex"),
       sku: String(body.sku || "未命名 SKU").slice(0, 120),
       platform: String(body.platform || "-").slice(0, 80),
@@ -836,6 +982,8 @@ async function handleApi(request, response, url) {
       result: body.result || {},
       risk: String(body.risk || "-").slice(0, 40),
       recommendations: Array.isArray(body.recommendations) ? body.recommendations.slice(0, 8) : [],
+      driver: body.driver || {},
+      usageMonth: usageMonth(),
       createdAt: new Date().toISOString(),
     };
     db.calculations.push(calculation);
@@ -846,6 +994,25 @@ async function handleApi(request, response, url) {
 
   if (request.method === "GET" && url.pathname.match(/^\/api\/reports\/[^/]+$/)) {
     const reportId = decodeURIComponent(url.pathname.split("/")[3] || "").trim().toUpperCase();
+    const calculationReport = db.calculations.find(
+      (item) =>
+        String(item.reportId || "").toUpperCase() === reportId ||
+        String(item.id || "").toUpperCase() === reportId ||
+        String(item.shareToken || "").toUpperCase() === reportId,
+    );
+    if (calculationReport) {
+      sendJson(response, 200, {
+        report: {
+          type: "calculation",
+          reportId: calculationReport.reportId || calculationReport.id,
+          status: "delivered",
+          calculation: publicCalculation(calculationReport),
+          createdAt: calculationReport.createdAt,
+        },
+      });
+      return true;
+    }
+
     const lead = db.leads.find((item) => String(item.reportId || "").toUpperCase() === reportId);
 
     if (!lead) {
@@ -1046,8 +1213,25 @@ async function handleApi(request, response, url) {
     }
 
     const invoices = db.invoices.map(publicInvoice);
+    const adminUsers = db.users.map((item) => {
+      const usage = quotaStatus(db, { userId: item.id }, item.planId || "free-3-sku");
+      const recentReports = db.calculations
+        .filter((calculation) => calculation.userId === item.id)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, 3)
+        .map((calculation) => ({
+          reportId: calculation.reportId || calculation.id,
+          sku: calculation.sku || "未命名 SKU",
+          createdAt: calculation.createdAt,
+        }));
+      return {
+        ...publicUser(item),
+        usage,
+        recentReports,
+      };
+    });
     sendJson(response, 200, {
-      users: db.users.map(publicUser),
+      users: adminUsers,
       quotes: db.quotes.map(publicQuote).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
       invoices: invoices.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
       overview: billingOverview(invoices),

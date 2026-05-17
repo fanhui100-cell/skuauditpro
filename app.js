@@ -31,6 +31,7 @@ const freeQuotaKey = "skuauditpro-free-quota";
 let currentUser = null;
 let authLoaded = false;
 let latestSingleReport = null;
+let latestRemoteUsage = null;
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -460,6 +461,14 @@ function updateFreeQuotaNote(message = "") {
     freeQuotaNote.innerHTML = message;
     return;
   }
+  if (latestRemoteUsage) {
+    freeQuotaNote.textContent = currentUser
+      ? (isEnglish
+          ? `Monthly quota: ${latestRemoteUsage.used}/${latestRemoteUsage.limit} used, ${latestRemoteUsage.remaining} remaining.`
+          : `本月套餐额度：已用 ${latestRemoteUsage.used}/${latestRemoteUsage.limit}，剩余 ${latestRemoteUsage.remaining} 次。`)
+      : text.freeQuota(latestRemoteUsage.remaining);
+    return;
+  }
   freeQuotaNote.textContent = currentUser ? text.loggedInQuota : text.freeQuota(freeQuotaRemaining());
 }
 
@@ -484,17 +493,54 @@ async function loadCurrentUser() {
     if (response.ok) {
       const data = await response.json();
       currentUser = data.user || null;
+      latestRemoteUsage = data.usage || latestRemoteUsage;
     }
   } catch {
     currentUser = null;
   }
   authLoaded = true;
+  await refreshUsage();
   updateFreeQuotaNote();
   return currentUser;
 }
 
+async function refreshUsage() {
+  try {
+    const response = await fetch(`/api/usage?visitorId=${encodeURIComponent(getVisitorId())}`);
+    if (!response.ok) {
+      return null;
+    }
+    const data = await response.json();
+    currentUser = data.user || currentUser;
+    latestRemoteUsage = data.usage || null;
+    if (!currentUser && latestRemoteUsage) {
+      saveFreeQuotaState({
+        visitorId: getVisitorId(),
+        used: Math.max(0, Number(latestRemoteUsage.limit) - Number(latestRemoteUsage.remaining)),
+      });
+    }
+    updateFreeQuotaNote();
+    return latestRemoteUsage;
+  } catch {
+    return null;
+  }
+}
+
 async function consumeFreeQuota() {
   const user = await loadCurrentUser();
+  await refreshUsage();
+  if (latestRemoteUsage && latestRemoteUsage.remaining <= 0) {
+    updateFreeQuotaNote(
+      user
+        ? (isEnglish
+            ? "Your monthly quota is used up. Please upgrade your plan or continue next month."
+            : "本月套餐额度已用完，请升级套餐或下月继续。")
+        : `${text.quotaFinished} <a href="/login">${text.loginLink}</a>`,
+    );
+    showQuotaModal();
+    return false;
+  }
+
   if (user) {
     updateFreeQuotaNote();
     return true;
@@ -507,8 +553,6 @@ async function consumeFreeQuota() {
     return false;
   }
 
-  state.used += 1;
-  saveFreeQuotaState(state);
   updateFreeQuotaNote();
   return true;
 }
@@ -804,6 +848,36 @@ function getRisk(result) {
   }
 
   return { label: text.healthy, className: "good", rank: 1 };
+}
+
+function getBulkGroup(row) {
+  const margin = Number(row.result?.margin) || 0;
+  if (margin < 0) {
+    return {
+      label: isEnglish ? "Loss-making" : "亏损",
+      className: "bad",
+      action: isEnglish ? "Pause traffic, reprice, and cut logistics or commission first." : "先停投，优先涨价、压物流或降佣金。",
+    };
+  }
+  if (margin < 0.12) {
+    return {
+      label: isEnglish ? "Thin margin" : "偏薄",
+      className: "watch",
+      action: isEnglish ? "Optimize cost before scaling creator deals or ads." : "先优化成本，再扩大达人或广告投放。",
+    };
+  }
+  return {
+    label: isEnglish ? "Healthy" : "健康",
+    className: "good",
+    action: isEnglish ? "Keep testing, but monitor ads and returns weekly." : "可继续测试，重点跟踪广告和退货。",
+  };
+}
+
+function getBulkPriorityScore(row) {
+  const margin = Number(row.result?.margin) || 0;
+  const lossDepth = Math.max(0, -margin) * 100;
+  const costPressure = Number(row.result?.totalCost || 0) / Math.max(Number(row.result?.price) || 0.01, 0.01);
+  return row.risk.rank * 100 + lossDepth + costPressure;
 }
 
 function suggestedPriceRange(result) {
@@ -1237,6 +1311,94 @@ function renderResult() {
   };
 }
 
+function buildAuditPayload() {
+  const inputs = getCurrentInputs();
+  const result = calculateProfit();
+  const risk = getRisk(result);
+  const driver = getLossDriver(inputs, result);
+  return {
+    visitorId: getVisitorId(),
+    sku: inputs.sku || text.unnamedSku,
+    platform: inputs.platform,
+    inputs,
+    result: {
+      netProfit: result.netProfit,
+      margin: result.margin,
+      breakEven: result.breakEven,
+      targetPrice: result.targetPrice,
+      targetProfitRate: result.targetProfitRate,
+      maxAffiliateRate: result.maxAffiliateRate,
+      totalCost: result.totalCost,
+      returnLoss: result.returnLoss,
+      variableFees: result.variableFees,
+      price: result.price,
+      adCost: result.adCost,
+      shipping: result.shipping,
+      duty: result.duty,
+      cost: result.cost,
+      otherCost: result.otherCost,
+    },
+    risk: risk.label,
+    recommendations: buildAdvice(result),
+    driver,
+  };
+}
+
+function applyPersistedAudit(data) {
+  if (!data?.calculation) {
+    return;
+  }
+  latestRemoteUsage = data.usage || latestRemoteUsage;
+  if (!currentUser && latestRemoteUsage) {
+    saveFreeQuotaState({
+      visitorId: getVisitorId(),
+      used: Math.max(0, Number(latestRemoteUsage.limit) - Number(latestRemoteUsage.remaining)),
+    });
+  }
+  latestSingleReport = {
+    ...latestSingleReport,
+    id: data.calculation.id,
+    reportId: data.calculation.reportId,
+    shareToken: data.calculation.shareToken,
+    reportUrl: data.reportUrl,
+  };
+  updateFreeQuotaNote();
+  if (tempLinkNote && data.reportUrl) {
+    const url = `${window.location.origin}${data.reportUrl}`;
+    tempLinkNote.innerHTML = `${isEnglish ? "Backend report created:" : "已生成后端报告："} <a href="${url}" target="_blank" rel="noreferrer">${url}</a>`;
+  }
+  if (saveCalculationNote) {
+    saveCalculationNote.innerHTML = currentUser
+      ? `${isEnglish ? "Automatically saved to your dashboard." : "已自动保存到你的历史记录。"} <a href="/dashboard.html#history">${isEnglish ? "View history" : "查看历史记录"}</a>`
+      : `${isEnglish ? "Anonymous report saved." : "匿名报告已保存。"} ${isEnglish ? "Log in to keep future history under your account." : "登录后可继续保留到账号历史。"}`
+  }
+}
+
+async function createBackendAudit(payload) {
+  const response = await fetch("/api/audits", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = data.error || (isEnglish ? "Could not create the audit." : "无法生成体检报告。");
+    if (data.usage) {
+      latestRemoteUsage = data.usage;
+      updateFreeQuotaNote(
+        data.loginRequired
+          ? `${message} <a href="/login">${text.loginLink}</a>`
+          : message,
+      );
+      showQuotaModal();
+    } else {
+      updateFreeQuotaNote(message);
+    }
+    return null;
+  }
+  return data;
+}
+
 function parseCsv(text) {
   const lines = text
     .trim()
@@ -1262,19 +1424,21 @@ function renderBulkReport() {
   const rows = parseCsv(bulkCsv.value).map((row) => {
     const result = calculateFromData(row);
     const risk = getRisk(result);
+    const group = getBulkGroup({ ...row, result, risk });
     return {
       ...row,
       result,
       risk,
+      group,
     };
   });
 
-  latestBulkRows = rows.sort((a, b) => b.risk.rank - a.risk.rank || a.result.margin - b.result.margin);
+  latestBulkRows = rows.sort((a, b) => getBulkPriorityScore(b) - getBulkPriorityScore(a));
   const body = document.querySelector("#bulk-results");
   body.innerHTML = "";
 
   if (!latestBulkRows.length) {
-    body.innerHTML = `<tr><td colspan="6">${text.noBulk}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8">${text.noBulk}</td></tr>`;
     updateBulkSummary([]);
     return;
   }
@@ -1288,6 +1452,8 @@ function renderBulkReport() {
       <td>${formatPercent(row.result.margin)}</td>
       <td>${money.format(row.result.breakEven)}</td>
       <td><span class="risk-chip ${row.risk.className}">${row.risk.label}</span></td>
+      <td><span class="risk-chip ${row.group.className}">${row.group.label}</span></td>
+      <td>${escapeHtml(row.group.action)}</td>
     `;
     body.append(tr);
   });
@@ -1321,17 +1487,24 @@ function updateBulkSummary(rows) {
   }
 
   const thin = rows.filter((row) => row.result.margin >= 0 && row.result.margin < 0.12).length;
+  const healthy = rows.filter((row) => row.result.margin >= 0.12).length;
+  const worst = rows[0];
   const topPriority = rows.slice(0, 3).map((row) => row.sku || text.unnamedSku).join("、");
   insights.innerHTML = `
     <div>
       <span>${isEnglish ? "Bulk summary" : "批量摘要"}</span>
-      <strong>${isEnglish ? `${loss} loss / ${thin} thin` : `${loss} 个亏损 / ${thin} 个偏薄`}</strong>
+      <strong>${isEnglish ? `${loss} loss / ${thin} thin / ${healthy} healthy` : `${loss} 个亏损 / ${thin} 个偏薄 / ${healthy} 个健康`}</strong>
     </div>
     <p>${
       isEnglish
-        ? `Review ${escapeHtml(topPriority)} first. They have the weakest margin or highest loss risk.`
-        : `建议优先复盘 ${escapeHtml(topPriority)}。这些 SKU 净利率最低或亏损风险最高。`
+        ? `Review ${escapeHtml(topPriority)} first. Worst SKU: ${escapeHtml(worst?.sku || text.unnamedSku)} at ${formatPercent(worst?.result?.margin || 0)} margin.`
+        : `建议优先复盘 ${escapeHtml(topPriority)}。最亏损 SKU：${escapeHtml(worst?.sku || text.unnamedSku)}，净利率 ${formatPercent(worst?.result?.margin || 0)}。`
     }</p>
+    <ul class="bulk-action-list">
+      <li>${isEnglish ? "Loss-making: pause spend, raise price, or cut logistics/commission." : "亏损组：停投、涨价、压物流或降佣金。"}</li>
+      <li>${isEnglish ? "Thin margin: optimize cost before scaling." : "偏薄组：先优化成本，再放量。"}</li>
+      <li>${isEnglish ? "Healthy: keep testing and monitor returns." : "健康组：继续测试，盯住退货和广告。"}</li>
+    </ul>
   `;
 }
 
@@ -1344,7 +1517,7 @@ function exportBulkReport() {
     return;
   }
 
-  const header = ["sku", "platform", "netProfit", "margin", "breakEven", "maxAffiliateRate", "risk"];
+  const header = ["sku", "platform", "netProfit", "margin", "breakEven", "maxAffiliateRate", "risk", "group", "recommendedAction"];
   const rows = latestBulkRows.map((row) =>
     [
       row.sku,
@@ -1354,6 +1527,8 @@ function exportBulkReport() {
       row.result.breakEven.toFixed(2),
       formatPercent(row.result.maxAffiliateRate),
       row.risk.label,
+      row.group?.label || "",
+      row.group?.action || "",
     ]
       .map(escapeCsv)
       .join(","),
@@ -1381,6 +1556,15 @@ function createTemporaryReportLink() {
     if (tempLinkNote) {
       tempLinkNote.textContent = text.noReportYet;
     }
+    return;
+  }
+
+  if (latestSingleReport.reportUrl) {
+    const url = `${window.location.origin}${latestSingleReport.reportUrl}`;
+    if (tempLinkNote) {
+      tempLinkNote.innerHTML = `${isEnglish ? "Report link:" : "报告链接："} <a href="${url}" target="_blank" rel="noreferrer">${url}</a>`;
+    }
+    copyText(url, tempLinkButton || { textContent: "" });
     return;
   }
 
@@ -1444,6 +1628,13 @@ ${buildAdvice(result).map((item) => `- ${item}`).join("\n")}`;
 }
 
 async function saveCalculation() {
+  if (latestSingleReport?.reportUrl) {
+    saveCalculationNote.innerHTML = currentUser
+      ? `${text.calculationSaved} <a href="/dashboard.html#history">${isEnglish ? "View history" : "查看历史记录"}</a>`
+      : `${isEnglish ? "Anonymous backend report is already saved:" : "匿名后端报告已保存："} <a href="${latestSingleReport.reportUrl}" target="_blank" rel="noreferrer">${latestSingleReport.reportId}</a>`;
+    return;
+  }
+
   const inputs = getCurrentInputs();
   const result = calculateProfit();
   const risk = getRisk(result);
@@ -1515,7 +1706,10 @@ async function loadStats() {
 }
 
 function updateLeadCount() {
-  document.querySelector("#lead-count").textContent = text.leadCount(getLeads().length);
+  const counter = document.querySelector("#lead-count");
+  if (counter) {
+    counter.textContent = text.leadCount(getLeads().length);
+  }
 }
 
 function showReportLink(lead) {
@@ -1585,7 +1779,10 @@ function exportLeads() {
   const leads = getLeads();
 
   if (!leads.length) {
-    document.querySelector("#lead-count").textContent = text.noLeads;
+    const counter = document.querySelector("#lead-count");
+    if (counter) {
+      counter.textContent = text.noLeads;
+    }
     return;
   }
 
@@ -1610,7 +1807,12 @@ form.addEventListener("submit", async (event) => {
   if (!(await consumeFreeQuota())) {
     return;
   }
+  const persisted = await createBackendAudit(buildAuditPayload());
+  if (!persisted) {
+    return;
+  }
   renderResult();
+  applyPersistedAudit(persisted);
 });
 
 fields.forEach((id) => {

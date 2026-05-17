@@ -93,17 +93,29 @@ function renderUsers(users) {
   }
 
   if (!users.length) {
-    body.innerHTML = '<tr><td colspan="5">暂无注册用户。</td></tr>';
+    body.innerHTML = '<tr><td colspan="7">暂无注册用户。</td></tr>';
     return;
   }
 
   body.innerHTML = users
-    .map(
-      (user) => `
+    .map((user) => {
+      const usage = user.usage || { used: 0, limit: user.quota || 0, remaining: user.quota || 0 };
+      const recentReports = Array.isArray(user.recentReports) ? user.recentReports : [];
+      const recentHtml = recentReports.length
+        ? recentReports
+            .map(
+              (report) =>
+                `<a href="report.html?id=${encodeURIComponent(report.reportId)}" target="_blank">${escapeHtml(report.sku || report.reportId)}</a>`,
+            )
+            .join("<br />")
+        : '<span class="table-muted">暂无报告</span>';
+      return `
         <tr>
           <td>${escapeHtml(user.name || "-")}<br /><span class="table-muted">${escapeHtml(user.email)}</span></td>
           <td>${escapeHtml(adminPlanOptions.find((plan) => plan.id === user.planId)?.name || user.planId || "-")}</td>
           <td>${escapeHtml(user.provider || "email")}</td>
+          <td>${usage.used}/${usage.limit}<br /><span class="table-muted">剩余 ${usage.remaining}</span></td>
+          <td>${recentHtml}</td>
           <td>${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "-"}</td>
           <td>
             <select data-user-plan="${user.id}">
@@ -113,8 +125,8 @@ function renderUsers(users) {
             </select>
           </td>
         </tr>
-      `,
-    )
+      `;
+    })
     .join("");
 
   document.querySelectorAll("[data-user-plan]").forEach((select) => {

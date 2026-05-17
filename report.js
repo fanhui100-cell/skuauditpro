@@ -103,7 +103,121 @@ function renderPriorityBlock(report) {
   `;
 }
 
+function calculationConclusion(item) {
+  const margin = Number(item.result?.margin) || 0;
+  if (margin < 0) {
+    return "这个 SKU 当前每卖一件都在亏损。建议先暂停放量，优先处理主要成本漏洞，再重新测算售价和佣金空间。";
+  }
+  if (margin < 0.12) {
+    return "这个 SKU 仍有利润，但安全垫偏薄。建议先优化物流、广告或佣金，再扩大达人合作和投放预算。";
+  }
+  return "这个 SKU 当前利润表现健康，可以继续小步测试价格、达人佣金和目标市场，同时持续观察退货率变化。";
+}
+
+function renderSingleCalculationReport(report) {
+  const item = report.calculation || {};
+  const resultData = item.result || {};
+  const driver = item.driver || {};
+  const recommendations = Array.isArray(item.recommendations) ? item.recommendations : [];
+
+  result.innerHTML = `
+    <div class="report-document-header">
+      <div>
+        <p class="eyebrow">Single SKU Report</p>
+        <h2>${escapeHtml(report.reportId)}</h2>
+      </div>
+      <div class="report-actions-print">
+        <span class="risk-chip ${riskClass(item)}">${escapeHtml(item.risk || "-")}</span>
+        <button class="button secondary" type="button" id="print-report-page">打印 / 保存 PDF</button>
+      </div>
+    </div>
+
+    <dl class="report-detail-list">
+      <div><dt>SKU</dt><dd>${escapeHtml(item.sku || "未命名 SKU")}</dd></div>
+      <div><dt>平台</dt><dd>${escapeHtml(item.platform || "-")}</dd></div>
+      <div><dt>报告状态</dt><dd>${escapeHtml(statusText[report.status] || report.status || "delivered")}</dd></div>
+      <div><dt>生成时间</dt><dd>${item.createdAt ? new Date(item.createdAt).toLocaleString() : "-"}</dd></div>
+    </dl>
+
+    <section class="report-section">
+      <h3>核心结论</h3>
+      <p class="report-conclusion">${escapeHtml(calculationConclusion(item))}</p>
+      <div class="report-metric-strip">
+        ${renderMetric("单件净利润", money.format(Number(resultData.netProfit) || 0), "扣除费用后")}
+        ${renderMetric("净利率", percent(resultData.margin), "当前售价")}
+        ${renderMetric("保本售价", money.format(Number(resultData.breakEven) || 0), "不亏损底线")}
+        ${renderMetric("建议售价", money.format(Number(resultData.targetPrice) || Number(resultData.breakEven) || 0), "按目标利润反推")}
+        ${renderMetric("佣金上限", percent(resultData.maxAffiliateRate), "达人成本边界")}
+      </div>
+    </section>
+
+    <section class="report-section report-advice-grid">
+      <article class="report-advice-card">
+        <h3>主要利润漏洞</h3>
+        <p><strong>${escapeHtml(driver.title || "等待补充")}</strong><br />${escapeHtml(driver.detail || "报告已保存，可继续补充成本项后重新生成。")}</p>
+      </article>
+      <article class="report-advice-card">
+        <h3>建议动作</h3>
+        <p>${escapeHtml(recommendations[0] || "先复核采购、物流、佣金、广告和退货成本。")}</p>
+      </article>
+      <article class="report-advice-card">
+        <h3>分享与交付</h3>
+        <p>这个链接已经绑定后端报告 ID，适合发给客户、打印或保存 PDF。</p>
+      </article>
+    </section>
+
+    <section class="report-section">
+      <div class="report-section-title">
+        <h3>建议清单</h3>
+        <span>${recommendations.length ? "自动生成" : "暂无建议"}</span>
+      </div>
+      <ul class="report-recommendation-list">
+        ${
+          recommendations.length
+            ? recommendations.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
+            : "<li>补充更多成本数据后，建议会更准确。</li>"
+        }
+      </ul>
+    </section>
+
+    <section class="report-section">
+      <div class="report-section-title">
+        <h3>SKU 明细</h3>
+        <span>单品报告</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>平台</th>
+              <th>净利润</th>
+              <th>净利率</th>
+              <th>保本售价</th>
+              <th>风险</th>
+              <th>建议</th>
+            </tr>
+          </thead>
+          <tbody>${renderSkuRows([item])}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="report-footer-note">
+      <strong>SKUAuditPro</strong>
+      <span>本报告基于用户输入的 SKU 成本假设生成，请在正式采购、投放或申报前复核关键成本。</span>
+    </div>
+  `;
+
+  document.querySelector("#print-report-page").addEventListener("click", () => window.print());
+}
+
 function renderReport(report) {
+  if (report.type === "calculation") {
+    renderSingleCalculationReport(report);
+    return;
+  }
+
   const status = report.status || "new";
   const summary = report.summary || {};
   const calculations = report.calculations || [];

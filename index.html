@@ -145,11 +145,18 @@
           </form>
 
           <div class="result-panel" id="single-result-panel" aria-live="polite" hidden>
-            <div class="risk-row">
-              <span class="risk-badge" id="risk-badge">健康</span>
-              <span id="result-summary">这个 SKU 当前仍有投放空间。</span>
+            <div class="decision-hero">
+              <div>
+                <span class="risk-badge" id="risk-badge">健康</span>
+                <h3 id="decision-title">可以继续测试</h3>
+                <p id="result-summary">这个 SKU 当前仍有投放空间。</p>
+              </div>
+              <div class="decision-action">
+                <span>建议动作</span>
+                <strong id="decision-action">保留投放，先测试建议售价。</strong>
+              </div>
             </div>
-            <div class="metric-grid">
+            <div class="metric-grid primary-metrics">
               <div>
                 <span>单件净利润</span>
                 <strong id="net-profit">$0.00</strong>
@@ -158,6 +165,13 @@
                 <span>净利率</span>
                 <strong id="margin">0%</strong>
               </div>
+              <div class="highlight-metric">
+                <span>建议售价</span>
+                <strong id="target-price">$0.00</strong>
+                <small id="target-price-note">建议先测心理价位</small>
+              </div>
+            </div>
+            <div class="metric-grid secondary-metrics">
               <div>
                 <span>保本售价</span>
                 <strong id="break-even">$0.00</strong>
@@ -166,30 +180,20 @@
                 <span>最大达人佣金</span>
                 <strong id="max-affiliate">0%</strong>
               </div>
-              <div>
-                <span>建议售价</span>
-                <strong id="target-price">$0.00</strong>
-              </div>
             </div>
-            <div class="diagnosis-card">
+            <div class="cost-breakdown-card">
               <div>
                 <span>主要利润漏洞</span>
                 <strong id="loss-driver-title">等待测算</strong>
               </div>
               <p id="loss-driver-detail">生成体检后会自动指出最该优先优化的成本项。</p>
+              <div class="cost-bars" id="cost-breakdown"></div>
             </div>
-            <div class="advice-box">
-              <h3>优化建议</h3>
-              <ul id="advice-list"></ul>
+            <div class="action-plan">
+              <h3>下一步行动</h3>
+              <div class="action-grid" id="action-plan"></div>
             </div>
             <div class="insight-stack">
-              <section class="insight-card">
-                <div class="insight-heading">
-                  <span>平台费用模板</span>
-                  <strong id="fee-template-title">TikTok Shop</strong>
-                </div>
-                <p id="fee-template-note">已按所选平台自动带入常用费率，可手动调整。</p>
-              </section>
               <section class="insight-card">
                 <div class="insight-heading">
                   <span>多国家利润对比</span>
@@ -201,22 +205,22 @@
                 </div>
                 <div class="mini-table" id="market-comparison-results"></div>
               </section>
-              <section class="insight-card">
-                <div class="insight-heading">
-                  <span>成本压力测试</span>
-                  <strong>抗风险</strong>
-                </div>
+            </div>
+            <div class="support-stack">
+              <details class="support-card">
+                <summary><span>成本压力测试</span><strong id="sensitivity-summary">查看抗风险表现</strong></summary>
                 <p>模拟广告、退货、佣金或物流变贵后，这个 SKU 还剩多少利润。</p>
                 <div class="mini-table" id="sensitivity-results"></div>
-              </section>
-              <section class="insight-card">
-                <div class="insight-heading">
-                  <span>上架前检查项</span>
-                  <strong>合规提示</strong>
-                </div>
+              </details>
+              <details class="support-card">
+                <summary><span>上架前检查项</span><strong id="compliance-summary">查看合规提示</strong></summary>
                 <p>根据 SKU 名称识别可能需要提前确认的平台、认证或进口要求。</p>
                 <ul class="compliance-list" id="compliance-list"></ul>
-              </section>
+              </details>
+              <details class="support-card">
+                <summary><span>平台费用模板</span><strong id="fee-template-title">TikTok Shop</strong></summary>
+                <p id="fee-template-note">已按所选平台自动带入常用费率，可手动调整。</p>
+              </details>
             </div>
             <div class="result-actions">
               <button class="button secondary" id="copy-single-report" type="button">复制单 SKU 报告</button>

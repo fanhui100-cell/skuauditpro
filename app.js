@@ -814,6 +814,43 @@ function suggestedPriceRange(result) {
   return text.targetPriceRange(money.format(target * 1.02), money.format(target * 1.12));
 }
 
+function psychologicalPrice(value) {
+  if (!value || !Number.isFinite(value)) {
+    return 0;
+  }
+  const floor = Math.floor(value);
+  return Math.max(0.99, floor + 0.99);
+}
+
+function suggestedPriceNote(result) {
+  const price = psychologicalPrice(result.targetPrice || result.breakEven);
+  if (!price) {
+    return isEnglish ? "Review costs before setting a target price." : "先复核成本，再设置目标售价。";
+  }
+  return isEnglish
+    ? `Test ${money.format(price)} first. Range: ${suggestedPriceRange(result)}`
+    : `建议先测 ${money.format(price)}，可测试区间 ${suggestedPriceRange(result)}`;
+}
+
+function decisionCopy(result, driver) {
+  if (result.margin < 0) {
+    return {
+      title: isEnglish ? "Pause scaling" : "先暂停放量",
+      action: isEnglish ? "Fix the main cost leak before buying more traffic." : "先处理主要成本漏洞，再继续投流。",
+    };
+  }
+  if (result.margin < result.targetProfitRate) {
+    return {
+      title: isEnglish ? "Optimize before scaling" : "先优化再放量",
+      action: isEnglish ? `${driver.title}. Try the suggested price and retest.` : `${driver.title}。先测试建议售价，再复盘利润。`,
+    };
+  }
+  return {
+    title: isEnglish ? "Keep testing" : "可以继续测试",
+    action: isEnglish ? "Keep traffic controlled and test the suggested price point." : "保留投放，先测试建议售价和目标市场。",
+  };
+}
+
 function getLossDriver(inputs, result) {
   const price = Math.max(result.price || Number(inputs.price) || 0, 0.01);
   const drivers = [
@@ -1002,9 +1039,18 @@ function renderSensitivity(inputs) {
   ];
 
   container.innerHTML = scenarios
-    .map((scenario) => {
+    .map((scenario, index) => {
       const result = calculateFromData(scenario.data);
       const risk = getRisk(result);
+      if (index === scenarios.length - 1) {
+        const summary = document.querySelector("#sensitivity-summary");
+        if (summary) {
+          summary.textContent =
+            result.margin >= 0
+              ? (isEnglish ? `Still ${formatPercent(result.margin)} margin if shipping rises` : `物流上涨后仍有 ${formatPercent(result.margin)} 净利率`)
+              : (isEnglish ? "Stress test shows loss risk" : "压力测试出现亏损风险");
+        }
+      }
       return `
         <div class="mini-row">
           <span>${escapeHtml(scenario.name)}</span>
@@ -1051,6 +1097,78 @@ function renderComplianceHints(inputs, result) {
   }
 
   list.innerHTML = hints.map((hint) => `<li>${escapeHtml(hint)}</li>`).join("");
+  const summary = document.querySelector("#compliance-summary");
+  if (summary) {
+    summary.textContent = hints.length > 1 ? (isEnglish ? `${hints.length} checks` : `${hints.length} 个检查项`) : hints[0].split(/[。.:：]/)[0];
+  }
+}
+
+function renderCostBreakdown(inputs, result) {
+  const container = document.querySelector("#cost-breakdown");
+  if (!container) {
+    return;
+  }
+  const price = Math.max(result.price || 0, 0.01);
+  const rows = [
+    { label: isEnglish ? "Product cost" : "采购成本", value: result.cost },
+    { label: isEnglish ? "Logistics + duty" : "物流+关税", value: result.shipping + result.duty },
+    { label: isEnglish ? "Platform/payment" : "平台/支付费", value: price * ((Number(inputs.platformRate) + Number(inputs.paymentRate)) / 100) },
+    { label: isEnglish ? "Commission" : "达人佣金", value: price * (Number(inputs.affiliateRate) / 100) },
+    { label: isEnglish ? "Ads" : "广告成本", value: result.adCost },
+    { label: isEnglish ? "Return loss" : "退货损耗", value: result.returnLoss },
+  ].sort((a, b) => b.value - a.value);
+  const max = Math.max(...rows.map((row) => row.value), 0.01);
+
+  container.innerHTML = rows
+    .map(
+      (row) => `
+        <div class="cost-row">
+          <div>
+            <span>${escapeHtml(row.label)}</span>
+            <strong>${money.format(row.value)}</strong>
+          </div>
+          <div class="cost-track"><span style="width: ${Math.min(100, Math.max(4, (row.value / max) * 100))}%"></span></div>
+        </div>
+      `,
+    )
+    .join("");
+}
+
+function renderActionPlan(result, driver) {
+  const container = document.querySelector("#action-plan");
+  if (!container) {
+    return;
+  }
+  const suggested = psychologicalPrice(result.targetPrice || result.breakEven);
+  const actions = [
+    {
+      label: isEnglish ? "Do first" : "先做",
+      text: suggested
+        ? (isEnglish ? `Test ${money.format(suggested)} as the first price point.` : `先测试 ${money.format(suggested)} 这个心理价位。`)
+        : (isEnglish ? "Review cost inputs before choosing a price." : "先复核成本输入，再决定售价。"),
+    },
+    {
+      label: isEnglish ? "Then" : "再做",
+      text: driver.detail,
+    },
+    {
+      label: isEnglish ? "Hold" : "暂缓",
+      text: isEnglish
+        ? `Do not raise commission above ${formatPercent(result.maxAffiliateRate)} until margin improves.`
+        : `利润改善前，不建议把佣金提高到 ${formatPercent(result.maxAffiliateRate)} 以上。`,
+    },
+  ];
+
+  container.innerHTML = actions
+    .map(
+      (action) => `
+        <article>
+          <span>${escapeHtml(action.label)}</span>
+          <p>${escapeHtml(action.text)}</p>
+        </article>
+      `,
+    )
+    .join("");
 }
 
 function renderProfessionalInsights(result) {
@@ -1088,17 +1206,25 @@ function renderResult() {
   document.querySelector("#margin").textContent = formatPercent(result.margin);
   document.querySelector("#break-even").textContent = money.format(result.breakEven);
   document.querySelector("#max-affiliate").textContent = formatPercent(result.maxAffiliateRate);
-  document.querySelector("#target-price").textContent = suggestedPriceRange(result);
   const driver = getLossDriver(getCurrentInputs(), result);
+  const decision = decisionCopy(result, driver);
+  document.querySelector("#decision-title").textContent = decision.title;
+  document.querySelector("#decision-action").textContent = decision.action;
+  document.querySelector("#target-price").textContent = money.format(psychologicalPrice(result.targetPrice || result.breakEven));
+  document.querySelector("#target-price-note").textContent = suggestedPriceNote(result);
   document.querySelector("#loss-driver-title").textContent = driver.title;
   document.querySelector("#loss-driver-detail").textContent = driver.detail;
+  renderCostBreakdown(getCurrentInputs(), result);
+  renderActionPlan(result, driver);
 
-  adviceList.innerHTML = "";
-  buildAdvice(result).forEach((item) => {
-    const li = document.createElement("li");
-    li.textContent = item;
-    adviceList.append(li);
-  });
+  if (adviceList) {
+    adviceList.innerHTML = "";
+    buildAdvice(result).forEach((item) => {
+      const li = document.createElement("li");
+      li.textContent = item;
+      adviceList.append(li);
+    });
+  }
 
   renderProfessionalInsights(result);
   latestSingleReport = {

@@ -433,12 +433,8 @@ textarea:focus {
   padding-top: 18px;
 }
 
-.risk-row {
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
 .risk-badge {
+  display: inline-block;
   border-radius: 999px;
   padding: 5px 10px;
   background: #e2f5ed;
@@ -455,6 +451,43 @@ textarea:focus {
 .risk-badge.danger {
   background: #ffe5e5;
   color: #a52d2d;
+}
+
+.decision-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.65fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.decision-hero h3 {
+  margin: 10px 0 6px;
+  font-size: 28px;
+}
+
+.decision-hero p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.decision-action {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.decision-action span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.decision-action strong {
+  color: var(--green-dark);
+  line-height: 1.5;
 }
 
 .metric-grid,
@@ -488,15 +521,69 @@ textarea:focus {
   line-height: 1.2;
 }
 
-.advice-box {
-  margin-top: 14px;
-  border-radius: 8px;
+.primary-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.primary-metrics strong {
+  font-size: clamp(26px, 4vw, 36px);
+}
+
+.secondary-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 10px;
+}
+
+.secondary-metrics div {
   background: #fbfefd;
+}
+
+.highlight-metric {
+  background: #e2f5ed !important;
+}
+
+.highlight-metric small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.cost-breakdown-card {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
   padding: 14px;
 }
 
+.cost-breakdown-card > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.cost-breakdown-card span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.cost-breakdown-card strong {
+  color: var(--green-dark);
+}
+
+.cost-breakdown-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .diagnosis-card {
-  margin-top: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
@@ -526,6 +613,75 @@ textarea:focus {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.6;
+}
+
+.cost-bars {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.cost-row {
+  display: grid;
+  gap: 5px;
+}
+
+.cost-row div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cost-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf4f1;
+}
+
+.cost-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--green);
+}
+
+.action-plan {
+  margin-top: 14px;
+}
+
+.action-plan h3 {
+  margin-bottom: 10px;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.action-grid article {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 13px;
+}
+
+.action-grid span {
+  display: inline-block;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  background: #f0f8f4;
+  padding: 4px 8px;
+  color: var(--green-dark);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.action-grid p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .bulk-diagnosis {
@@ -580,6 +736,44 @@ textarea:focus {
 
 .insight-card p {
   margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.support-stack {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.support-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfefd;
+  padding: 12px 14px;
+}
+
+.support-card summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.support-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.support-card summary span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.support-card > p {
+  margin: 10px 0;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.6;
@@ -1844,6 +2038,10 @@ tbody tr:last-child td {
 
   .form-grid,
   .metric-grid,
+  .primary-metrics,
+  .secondary-metrics,
+  .decision-hero,
+  .action-grid,
   .hero-proof,
   .signal-strip,
   .insight-heading,

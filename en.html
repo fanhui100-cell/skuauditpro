@@ -145,11 +145,18 @@
           </form>
 
           <div class="result-panel" id="single-result-panel" aria-live="polite" hidden>
-            <div class="risk-row">
-              <span class="risk-badge" id="risk-badge">Healthy</span>
-              <span id="result-summary">This SKU still has room to scale.</span>
+            <div class="decision-hero">
+              <div>
+                <span class="risk-badge" id="risk-badge">Healthy</span>
+                <h3 id="decision-title">Keep testing</h3>
+                <p id="result-summary">This SKU still has room to scale.</p>
+              </div>
+              <div class="decision-action">
+                <span>Suggested action</span>
+                <strong id="decision-action">Keep testing and try the suggested price.</strong>
+              </div>
             </div>
-            <div class="metric-grid">
+            <div class="metric-grid primary-metrics">
               <div>
                 <span>Net profit</span>
                 <strong id="net-profit">$0.00</strong>
@@ -158,6 +165,13 @@
                 <span>Margin</span>
                 <strong id="margin">0%</strong>
               </div>
+              <div class="highlight-metric">
+                <span>Suggested price</span>
+                <strong id="target-price">$0.00</strong>
+                <small id="target-price-note">Start with a psychological price point</small>
+              </div>
+            </div>
+            <div class="metric-grid secondary-metrics">
               <div>
                 <span>Break-even price</span>
                 <strong id="break-even">$0.00</strong>
@@ -166,30 +180,20 @@
                 <span>Max commission</span>
                 <strong id="max-affiliate">0%</strong>
               </div>
-              <div>
-                <span>Suggested price</span>
-                <strong id="target-price">$0.00</strong>
-              </div>
             </div>
-            <div class="diagnosis-card">
+            <div class="cost-breakdown-card">
               <div>
                 <span>Main profit leak</span>
                 <strong id="loss-driver-title">Waiting for audit</strong>
               </div>
               <p id="loss-driver-detail">After the audit, we will highlight the cost item to fix first.</p>
+              <div class="cost-bars" id="cost-breakdown"></div>
             </div>
-            <div class="advice-box">
-              <h3>Recommendations</h3>
-              <ul id="advice-list"></ul>
+            <div class="action-plan">
+              <h3>Next actions</h3>
+              <div class="action-grid" id="action-plan"></div>
             </div>
             <div class="insight-stack">
-              <section class="insight-card">
-                <div class="insight-heading">
-                  <span>Platform fee template</span>
-                  <strong id="fee-template-title">TikTok Shop</strong>
-                </div>
-                <p id="fee-template-note">Common fee assumptions are applied for the selected platform. You can edit every input.</p>
-              </section>
               <section class="insight-card">
                 <div class="insight-heading">
                   <span>Market margin comparison</span>
@@ -201,22 +205,22 @@
                 </div>
                 <div class="mini-table" id="market-comparison-results"></div>
               </section>
-              <section class="insight-card">
-                <div class="insight-heading">
-                  <span>Cost pressure test</span>
-                  <strong>Risk buffer</strong>
-                </div>
+            </div>
+            <div class="support-stack">
+              <details class="support-card">
+                <summary><span>Cost pressure test</span><strong id="sensitivity-summary">View risk buffer</strong></summary>
                 <p>See what happens if ads, returns, commission or shipping get more expensive.</p>
                 <div class="mini-table" id="sensitivity-results"></div>
-              </section>
-              <section class="insight-card">
-                <div class="insight-heading">
-                  <span>Pre-listing checks</span>
-                  <strong>Compliance</strong>
-                </div>
+              </details>
+              <details class="support-card">
+                <summary><span>Pre-listing checks</span><strong id="compliance-summary">View compliance hints</strong></summary>
                 <p>Early hints for platform, certification or import checks based on the SKU name.</p>
                 <ul class="compliance-list" id="compliance-list"></ul>
-              </section>
+              </details>
+              <details class="support-card">
+                <summary><span>Platform fee template</span><strong id="fee-template-title">TikTok Shop</strong></summary>
+                <p id="fee-template-note">Common fee assumptions are applied for the selected platform. You can edit every input.</p>
+              </details>
             </div>
             <div class="result-actions">
               <button class="button secondary" id="copy-single-report" type="button">Copy SKU Report</button>

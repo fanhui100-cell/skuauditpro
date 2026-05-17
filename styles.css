@@ -385,6 +385,33 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(11, 143, 98, 0.12);
 }
 
+.field-with-search {
+  display: grid;
+  gap: 6px;
+}
+
+.search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.search-row input {
+  height: 38px;
+}
+
+.compact-button {
+  min-height: 38px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.compact-note {
+  min-height: 18px;
+  margin: 0;
+}
+
 .result-panel {
   margin-top: 18px;
   border-top: 1px solid var(--line);
@@ -483,6 +510,10 @@ textarea:focus {
 
 .insight-heading {
   margin-bottom: 8px;
+}
+
+.compact-search {
+  margin-bottom: 10px;
 }
 
 .insight-heading span {

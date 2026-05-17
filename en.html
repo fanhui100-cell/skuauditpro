@@ -82,34 +82,18 @@
                   <option value="Other">Other</option>
                 </select>
               </label>
-              <label>
-                Target market
-                <select id="market">
-                  <option value="US">United States</option>
-                  <option value="UK">United Kingdom</option>
-                  <option value="DE">Germany</option>
-                  <option value="CA">Canada</option>
-                  <option value="FR">France</option>
-                  <option value="IT">Italy</option>
-                  <option value="ES">Spain</option>
-                  <option value="NL">Netherlands</option>
-                  <option value="PL">Poland</option>
-                  <option value="AU">Australia</option>
-                  <option value="NZ">New Zealand</option>
-                  <option value="JP">Japan</option>
-                  <option value="KR">South Korea</option>
-                  <option value="SG">Singapore</option>
-                  <option value="MY">Malaysia</option>
-                  <option value="TH">Thailand</option>
-                  <option value="VN">Vietnam</option>
-                  <option value="PH">Philippines</option>
-                  <option value="ID">Indonesia</option>
-                  <option value="MX">Mexico</option>
-                  <option value="BR">Brazil</option>
-                  <option value="AE">United Arab Emirates</option>
-                  <option value="SA">Saudi Arabia</option>
-                </select>
-              </label>
+              <div class="field-with-search">
+                <label>
+                  Target market
+                  <select id="market"></select>
+                </label>
+                <div class="search-row">
+                  <input id="market-search" list="country-options" type="search" placeholder="Search country, e.g. US, Japan, Brazil" />
+                  <button class="button secondary compact-button" id="market-search-button" type="button">Search</button>
+                </div>
+                <p class="form-note compact-note" id="market-search-note"></p>
+              </div>
+              <datalist id="country-options"></datalist>
               <label>
                 SKU name
                 <input id="sku-name" type="text" value="Portable fill light" />
@@ -197,6 +181,10 @@
                 <div class="insight-heading">
                   <span>Market margin comparison</span>
                   <strong>Market Fit</strong>
+                </div>
+                <div class="search-row compact-search">
+                  <input id="market-comparison-search" list="country-options" type="search" placeholder="Search a country to add" />
+                  <button class="button secondary compact-button" id="market-comparison-search-button" type="button">Search</button>
                 </div>
                 <div class="mini-table" id="market-comparison-results"></div>
               </section>

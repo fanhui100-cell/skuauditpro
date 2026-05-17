@@ -16,6 +16,11 @@ const uploadCsvInput = document.querySelector("#upload-csv");
 const leadReportLink = document.querySelector("#lead-report-link");
 const bulkNote = document.querySelector("#bulk-note");
 const isEnglish = document.documentElement.lang.startsWith("en");
+const marketSearchInput = document.querySelector("#market-search");
+const marketSearchButton = document.querySelector("#market-search-button");
+const marketSearchNote = document.querySelector("#market-search-note");
+const marketComparisonSearchInput = document.querySelector("#market-comparison-search");
+const marketComparisonSearchButton = document.querySelector("#market-comparison-search-button");
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -60,6 +65,9 @@ const text = isEnglish
       calculationSaved: "Saved to your dashboard.",
       loginToSave: "Please log in before saving calculation history.",
       saveFailed: "Could not save. Please try again.",
+      marketSelected: (name) => `Selected market: ${name}`,
+      marketAdded: (name) => `Added ${name} to the comparison.`,
+      marketNotFound: "Country not found. Try its English name or 2-letter code.",
     }
   : {
       healthy: "健康",
@@ -98,6 +106,9 @@ const text = isEnglish
       calculationSaved: "已保存到你的计算记录。",
       loginToSave: "请先登录，再保存计算记录。",
       saveFailed: "保存失败，请稍后再试。",
+      marketSelected: (name) => `已选择目标市场：${name}`,
+      marketAdded: (name) => `已把 ${name} 加入对比。`,
+      marketNotFound: "没有找到这个国家，请尝试中文名、英文名或两位国家代码。",
     };
 
 const fields = [
@@ -163,36 +174,252 @@ const platformTemplates = {
   },
 };
 
-const marketProfiles = [
-  { id: "US", name: isEnglish ? "United States" : "\u7f8e\u56fd", shippingMultiplier: 1, dutyMultiplier: 1 },
-  { id: "UK", name: isEnglish ? "United Kingdom" : "\u82f1\u56fd", shippingMultiplier: 1.12, dutyMultiplier: 1.18 },
-  { id: "DE", name: isEnglish ? "Germany" : "\u5fb7\u56fd", shippingMultiplier: 1.18, dutyMultiplier: 1.22 },
-  { id: "CA", name: isEnglish ? "Canada" : "\u52a0\u62ff\u5927", shippingMultiplier: 1.1, dutyMultiplier: 1.12 },
-  { id: "FR", name: isEnglish ? "France" : "\u6cd5\u56fd", shippingMultiplier: 1.18, dutyMultiplier: 1.21 },
-  { id: "IT", name: isEnglish ? "Italy" : "\u610f\u5927\u5229", shippingMultiplier: 1.2, dutyMultiplier: 1.23 },
-  { id: "ES", name: isEnglish ? "Spain" : "\u897f\u73ed\u7259", shippingMultiplier: 1.16, dutyMultiplier: 1.2 },
-  { id: "NL", name: isEnglish ? "Netherlands" : "\u8377\u5170", shippingMultiplier: 1.14, dutyMultiplier: 1.18 },
-  { id: "PL", name: isEnglish ? "Poland" : "\u6ce2\u5170", shippingMultiplier: 1.18, dutyMultiplier: 1.2 },
-  { id: "AU", name: isEnglish ? "Australia" : "\u6fb3\u5927\u5229\u4e9a", shippingMultiplier: 1.25, dutyMultiplier: 1.12 },
-  { id: "NZ", name: isEnglish ? "New Zealand" : "\u65b0\u897f\u5170", shippingMultiplier: 1.3, dutyMultiplier: 1.1 },
-  { id: "JP", name: isEnglish ? "Japan" : "\u65e5\u672c", shippingMultiplier: 1.05, dutyMultiplier: 1.08 },
-  { id: "KR", name: isEnglish ? "South Korea" : "\u97e9\u56fd", shippingMultiplier: 1.08, dutyMultiplier: 1.1 },
-  { id: "SG", name: isEnglish ? "Singapore" : "\u65b0\u52a0\u5761", shippingMultiplier: 0.9, dutyMultiplier: 0.95 },
-  { id: "MY", name: isEnglish ? "Malaysia" : "\u9a6c\u6765\u897f\u4e9a", shippingMultiplier: 0.95, dutyMultiplier: 1 },
-  { id: "TH", name: isEnglish ? "Thailand" : "\u6cf0\u56fd", shippingMultiplier: 0.98, dutyMultiplier: 1.02 },
-  { id: "VN", name: isEnglish ? "Vietnam" : "\u8d8a\u5357", shippingMultiplier: 1.02, dutyMultiplier: 1.05 },
-  { id: "PH", name: isEnglish ? "Philippines" : "\u83f2\u5f8b\u5bbe", shippingMultiplier: 1.05, dutyMultiplier: 1.05 },
-  { id: "ID", name: isEnglish ? "Indonesia" : "\u5370\u5c3c", shippingMultiplier: 1.08, dutyMultiplier: 1.08 },
-  { id: "MX", name: isEnglish ? "Mexico" : "\u58a8\u897f\u54e5", shippingMultiplier: 1.2, dutyMultiplier: 1.12 },
-  { id: "BR", name: isEnglish ? "Brazil" : "\u5df4\u897f", shippingMultiplier: 1.35, dutyMultiplier: 1.35 },
-  { id: "AE", name: isEnglish ? "United Arab Emirates" : "\u963f\u8054\u914b", shippingMultiplier: 1.05, dutyMultiplier: 1 },
-  { id: "SA", name: isEnglish ? "Saudi Arabia" : "\u6c99\u7279\u963f\u62c9\u4f2f", shippingMultiplier: 1.08, dutyMultiplier: 1.05 },
+const allCountryCodes = [
+  "AF", "AX", "AL", "DZ", "AS", "AD", "AO", "AI", "AQ", "AG", "AR", "AM", "AW", "AU", "AT", "AZ",
+  "BS", "BH", "BD", "BB", "BY", "BE", "BZ", "BJ", "BM", "BT", "BO", "BQ", "BA", "BW", "BV", "BR",
+  "IO", "BN", "BG", "BF", "BI", "CV", "KH", "CM", "CA", "KY", "CF", "TD", "CL", "CN", "CX", "CC",
+  "CO", "KM", "CG", "CD", "CK", "CR", "CI", "HR", "CU", "CW", "CY", "CZ", "DK", "DJ", "DM", "DO",
+  "EC", "EG", "SV", "GQ", "ER", "EE", "SZ", "ET", "FK", "FO", "FJ", "FI", "FR", "GF", "PF", "TF",
+  "GA", "GM", "GE", "DE", "GH", "GI", "GR", "GL", "GD", "GP", "GU", "GT", "GG", "GN", "GW", "GY",
+  "HT", "HM", "VA", "HN", "HK", "HU", "IS", "IN", "ID", "IR", "IQ", "IE", "IM", "IL", "IT", "JM",
+  "JP", "JE", "JO", "KZ", "KE", "KI", "KP", "KR", "KW", "KG", "LA", "LV", "LB", "LS", "LR", "LY",
+  "LI", "LT", "LU", "MO", "MG", "MW", "MY", "MV", "ML", "MT", "MH", "MQ", "MR", "MU", "YT", "MX",
+  "FM", "MD", "MC", "MN", "ME", "MS", "MA", "MZ", "MM", "NA", "NR", "NP", "NL", "NC", "NZ", "NI",
+  "NE", "NG", "NU", "NF", "MK", "MP", "NO", "OM", "PK", "PW", "PS", "PA", "PG", "PY", "PE", "PH",
+  "PN", "PL", "PT", "PR", "QA", "RE", "RO", "RU", "RW", "BL", "SH", "KN", "LC", "MF", "PM", "VC",
+  "WS", "SM", "ST", "SA", "SN", "RS", "SC", "SL", "SG", "SX", "SK", "SI", "SB", "SO", "ZA", "GS",
+  "SS", "ES", "LK", "SD", "SR", "SJ", "SE", "CH", "SY", "TW", "TJ", "TZ", "TH", "TL", "TG", "TK",
+  "TO", "TT", "TN", "TR", "TM", "TC", "TV", "UG", "UA", "AE", "GB", "US", "UM", "UY", "UZ", "VU",
+  "VE", "VN", "VG", "VI", "WF", "EH", "YE", "ZM", "ZW", "XK",
 ];
+
+const countryNameFallbacks = {
+  XK: isEnglish ? "Kosovo" : "\u79d1\u7d22\u6c83",
+};
+
+const countrySearchAliases = {
+  US: ["usa", "america", "\u7f8e\u56fd", "\u7f8e\u5229\u575a"],
+  GB: ["uk", "britain", "england", "\u82f1\u56fd", "\u82f1\u683c\u5170"],
+  AE: ["uae", "\u963f\u8054\u914b"],
+  KR: ["korea", "south korea", "\u97e9\u56fd"],
+  KP: ["north korea", "\u671d\u9c9c"],
+  RU: ["russia", "\u4fc4\u7f57\u65af"],
+  VN: ["vietnam", "\u8d8a\u5357"],
+  ID: ["indonesia", "\u5370\u5c3c", "\u5370\u5ea6\u5c3c\u897f\u4e9a"],
+  XK: ["kosovo", "\u79d1\u7d22\u6c83"],
+};
+
+const tradeMarketIds = [
+  "US", "GB", "DE", "FR", "IT", "ES", "NL", "PL", "CA", "MX", "BR", "AU", "JP", "KR", "SG", "MY",
+  "TH", "VN", "PH", "ID", "IN", "AE", "SA", "TR", "ZA", "CL",
+];
+
+const marketProfileOverrides = {
+  US: { shippingMultiplier: 1, dutyMultiplier: 1 },
+  GB: { shippingMultiplier: 1.12, dutyMultiplier: 1.18 },
+  DE: { shippingMultiplier: 1.18, dutyMultiplier: 1.22 },
+  CA: { shippingMultiplier: 1.1, dutyMultiplier: 1.12 },
+  FR: { shippingMultiplier: 1.18, dutyMultiplier: 1.21 },
+  IT: { shippingMultiplier: 1.2, dutyMultiplier: 1.23 },
+  ES: { shippingMultiplier: 1.16, dutyMultiplier: 1.2 },
+  NL: { shippingMultiplier: 1.14, dutyMultiplier: 1.18 },
+  PL: { shippingMultiplier: 1.18, dutyMultiplier: 1.2 },
+  AU: { shippingMultiplier: 1.25, dutyMultiplier: 1.12 },
+  NZ: { shippingMultiplier: 1.3, dutyMultiplier: 1.1 },
+  JP: { shippingMultiplier: 1.05, dutyMultiplier: 1.08 },
+  KR: { shippingMultiplier: 1.08, dutyMultiplier: 1.1 },
+  SG: { shippingMultiplier: 0.9, dutyMultiplier: 0.95 },
+  MY: { shippingMultiplier: 0.95, dutyMultiplier: 1 },
+  TH: { shippingMultiplier: 0.98, dutyMultiplier: 1.02 },
+  VN: { shippingMultiplier: 1.02, dutyMultiplier: 1.05 },
+  PH: { shippingMultiplier: 1.05, dutyMultiplier: 1.05 },
+  ID: { shippingMultiplier: 1.08, dutyMultiplier: 1.08 },
+  IN: { shippingMultiplier: 1.12, dutyMultiplier: 1.14 },
+  MX: { shippingMultiplier: 1.2, dutyMultiplier: 1.12 },
+  BR: { shippingMultiplier: 1.35, dutyMultiplier: 1.35 },
+  AE: { shippingMultiplier: 1.05, dutyMultiplier: 1 },
+  SA: { shippingMultiplier: 1.08, dutyMultiplier: 1.05 },
+  TR: { shippingMultiplier: 1.14, dutyMultiplier: 1.12 },
+  ZA: { shippingMultiplier: 1.25, dutyMultiplier: 1.18 },
+  CL: { shippingMultiplier: 1.24, dutyMultiplier: 1.12 },
+};
+
+const europeMarketIds = new Set([
+  "AL", "AD", "AT", "AX", "BA", "BE", "BG", "BY", "CH", "CY", "CZ", "DK", "EE", "FI", "FO", "GG",
+  "GI", "GR", "HR", "HU", "IE", "IM", "IS", "JE", "LI", "LT", "LU", "LV", "MC", "MD", "ME", "MK",
+  "MT", "NO", "PT", "RO", "RS", "SE", "SI", "SK", "SM", "UA", "VA", "XK",
+]);
+const asiaPacificMarketIds = new Set([
+  "AS", "BD", "BN", "BT", "CC", "CN", "CX", "FJ", "FM", "GU", "HK", "KH", "KI", "LA", "LK", "MH",
+  "MM", "MN", "MO", "MV", "NC", "NP", "NR", "NU", "PF", "PG", "PK", "PW", "SB", "TL", "TO", "TV",
+  "TW", "VU", "WF", "WS",
+]);
+const middleEastMarketIds = new Set(["BH", "EG", "IL", "IQ", "IR", "JO", "KW", "LB", "OM", "PS", "QA", "SY", "YE"]);
+const latinAmericaMarketIds = new Set([
+  "AG", "AI", "AR", "AW", "BB", "BL", "BO", "BQ", "BS", "BZ", "CO", "CR", "CU", "CW", "DM", "DO",
+  "EC", "FK", "GD", "GF", "GP", "GT", "GY", "HN", "HT", "JM", "KY", "LC", "MF", "MQ", "MS", "NI",
+  "PA", "PE", "PM", "PR", "PY", "SR", "SX", "TC", "TT", "UY", "VC", "VE", "VG", "VI",
+]);
+const africaMarketIds = new Set([
+  "AO", "BF", "BI", "BJ", "BW", "CD", "CF", "CG", "CI", "CM", "CV", "DJ", "DZ", "ER", "ET", "GA",
+  "GH", "GM", "GN", "GQ", "GW", "KE", "KM", "LR", "LS", "LY", "MA", "MG", "ML", "MR", "MU", "MW",
+  "MZ", "NA", "NE", "NG", "RE", "RW", "SC", "SD", "SH", "SL", "SN", "SO", "SS", "ST", "SZ", "TD",
+  "TG", "TN", "TZ", "UG", "YT", "ZM", "ZW",
+]);
+
+const displayNames = new Intl.DisplayNames([isEnglish ? "en" : "zh-CN"], { type: "region" });
+const englishDisplayNames = new Intl.DisplayNames(["en"], { type: "region" });
+
+function getCountryName(code, english = isEnglish) {
+  if (countryNameFallbacks[code] && english === isEnglish) {
+    return countryNameFallbacks[code];
+  }
+
+  try {
+    return (english ? englishDisplayNames : displayNames).of(code) || code;
+  } catch {
+    return countryNameFallbacks[code] || code;
+  }
+}
+
+function defaultMarketProfile(code) {
+  if (marketProfileOverrides[code]) {
+    return marketProfileOverrides[code];
+  }
+  if (europeMarketIds.has(code)) {
+    return { shippingMultiplier: 1.18, dutyMultiplier: 1.2 };
+  }
+  if (asiaPacificMarketIds.has(code)) {
+    return { shippingMultiplier: 1.08, dutyMultiplier: 1.06 };
+  }
+  if (middleEastMarketIds.has(code)) {
+    return { shippingMultiplier: 1.1, dutyMultiplier: 1.08 };
+  }
+  if (latinAmericaMarketIds.has(code)) {
+    return { shippingMultiplier: 1.25, dutyMultiplier: 1.16 };
+  }
+  if (africaMarketIds.has(code)) {
+    return { shippingMultiplier: 1.25, dutyMultiplier: 1.15 };
+  }
+  return { shippingMultiplier: 1.18, dutyMultiplier: 1.12 };
+}
+
+const marketProfiles = allCountryCodes
+  .map((code) => ({
+    id: code,
+    name: getCountryName(code),
+    englishName: getCountryName(code, true),
+    ...defaultMarketProfile(code),
+  }))
+  .sort((a, b) => a.name.localeCompare(b.name, isEnglish ? "en" : "zh-CN"));
+
+const marketById = new Map(marketProfiles.map((market) => [market.id, market]));
+let selectedComparisonMarketId = "";
 
 const getNumber = (id) => {
   const value = Number.parseFloat(document.querySelector(`#${id}`).value);
   return Number.isFinite(value) ? value : 0;
 };
+
+function normalizeSearchValue(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function findMarket(query) {
+  const normalized = normalizeSearchValue(query);
+  if (!normalized) {
+    return null;
+  }
+
+  const code = normalized.toUpperCase();
+  if (code === "UK") {
+    return marketById.get("GB");
+  }
+  if (marketById.has(code)) {
+    return marketById.get(code);
+  }
+
+  return (
+    marketProfiles.find((market) => {
+      const values = [
+        market.id,
+        market.name,
+        market.englishName,
+        ...(countrySearchAliases[market.id] || []),
+      ].map(normalizeSearchValue);
+      return values.some((value) => value === normalized);
+    }) ||
+    marketProfiles.find((market) => {
+      const values = [
+        market.name,
+        market.englishName,
+        ...(countrySearchAliases[market.id] || []),
+      ].map(normalizeSearchValue);
+      return values.some((value) => value.includes(normalized));
+    }) ||
+    null
+  );
+}
+
+function populateMarketControls() {
+  const marketSelect = document.querySelector("#market");
+  const datalist = document.querySelector("#country-options");
+  if (!marketSelect) {
+    return;
+  }
+
+  marketSelect.innerHTML = marketProfiles
+    .map((market) => `<option value="${market.id}">${escapeHtml(market.name)}</option>`)
+    .join("");
+  marketSelect.value = "US";
+
+  if (datalist) {
+    datalist.innerHTML = marketProfiles
+      .map((market) => `<option value="${escapeHtml(market.name)}">${escapeHtml(market.englishName)} · ${market.id}</option>`)
+      .join("");
+  }
+}
+
+function selectTargetMarketFromSearch() {
+  const market = findMarket(marketSearchInput?.value);
+  if (!market) {
+    if (marketSearchNote) {
+      marketSearchNote.textContent = text.marketNotFound;
+    }
+    return;
+  }
+
+  document.querySelector("#market").value = market.id;
+  if (marketSearchInput) {
+    marketSearchInput.value = market.name;
+  }
+  if (marketSearchNote) {
+    marketSearchNote.textContent = text.marketSelected(market.name);
+  }
+  rememberCurrentInputs();
+}
+
+function searchComparisonMarket() {
+  const market = findMarket(marketComparisonSearchInput?.value);
+  if (!market) {
+    if (marketComparisonSearchInput) {
+      marketComparisonSearchInput.value = "";
+      marketComparisonSearchInput.placeholder = text.marketNotFound;
+    }
+    return;
+  }
+
+  selectedComparisonMarketId = market.id;
+  if (marketComparisonSearchInput) {
+    marketComparisonSearchInput.value = market.name;
+    marketComparisonSearchInput.placeholder = text.marketAdded(market.name);
+  }
+  renderMarketComparison(getCurrentInputs());
+}
 
 const getLeads = () => JSON.parse(localStorage.getItem("skuprofit-leads") || "[]");
 const saveLeads = (leads) => localStorage.setItem("skuprofit-leads", JSON.stringify(leads));
@@ -315,7 +542,7 @@ function fillInputs(inputs) {
   Object.entries(map).forEach(([key, id]) => {
     const field = document.querySelector(`#${id}`);
     if (field && inputs[key] !== undefined) {
-      field.value = inputs[key];
+      field.value = key === "market" && inputs[key] === "UK" ? "GB" : inputs[key];
     }
   });
 }
@@ -449,7 +676,12 @@ function renderMarketComparison(inputs) {
     return;
   }
 
-  const rows = marketProfiles
+  const comparisonIds = selectedComparisonMarketId
+    ? [selectedComparisonMarketId, ...tradeMarketIds.filter((id) => id !== selectedComparisonMarketId)]
+    : tradeMarketIds;
+  const rows = comparisonIds
+    .map((id) => marketById.get(id))
+    .filter(Boolean)
     .map((market) => {
       const result = calculateFromData({
         ...inputs,
@@ -458,7 +690,15 @@ function renderMarketComparison(inputs) {
       });
       return { market, result, risk: getRisk(result) };
     })
-    .sort((a, b) => b.result.margin - a.result.margin);
+    .sort((a, b) => {
+      if (a.market.id === selectedComparisonMarketId) {
+        return -1;
+      }
+      if (b.market.id === selectedComparisonMarketId) {
+        return 1;
+      }
+      return b.result.margin - a.result.margin;
+    });
 
   container.innerHTML = rows
     .map(
@@ -927,6 +1167,28 @@ fields.forEach((id) => {
 });
 
 document.querySelector("#platform").addEventListener("change", applyPlatformTemplate);
+if (marketSearchButton) {
+  marketSearchButton.addEventListener("click", selectTargetMarketFromSearch);
+}
+if (marketSearchInput) {
+  marketSearchInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      selectTargetMarketFromSearch();
+    }
+  });
+}
+if (marketComparisonSearchButton) {
+  marketComparisonSearchButton.addEventListener("click", searchComparisonMarket);
+}
+if (marketComparisonSearchInput) {
+  marketComparisonSearchInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      searchComparisonMarket();
+    }
+  });
+}
 
 leadForm.addEventListener("submit", handleLeadSubmit);
 loadDemoButton.addEventListener("click", () => {
@@ -963,6 +1225,7 @@ if (clearButton) {
   clearButton.addEventListener("click", clearLeads);
 }
 
+populateMarketControls();
 hydrateSavedInputs();
 renderTemplateNote();
 updateLeadCount();

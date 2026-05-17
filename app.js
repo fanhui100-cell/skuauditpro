@@ -195,6 +195,7 @@ LED桌面灯,TikTok Shop,39.99,9.8,5.2,2.1,6,2.9,15,3.4,6,0.7
 厨房硅胶刷,Shopify,16.99,4.4,3.7,0.9,2,2.9,0,3.2,7,0.5`;
 
 let latestBulkRows = [];
+let hasGeneratedSingleReport = false;
 
 function calculateFromData(data) {
   const price = Number(data.price) || 0;
@@ -540,7 +541,9 @@ function renderProfessionalInsights(result) {
 }
 
 function renderResult() {
+  hasGeneratedSingleReport = true;
   const result = calculateProfit();
+  document.querySelector("#single-result-panel")?.removeAttribute("hidden");
   const badge = document.querySelector("#risk-badge");
   const summary = document.querySelector("#result-summary");
   const adviceList = document.querySelector("#advice-list");
@@ -895,7 +898,11 @@ form.addEventListener("submit", (event) => {
 
 fields.forEach((id) => {
   document.querySelector(`#${id}`).addEventListener("input", () => {
-    renderResult();
+    if (hasGeneratedSingleReport) {
+      document.querySelector("#single-result-panel")?.setAttribute("hidden", "");
+      hasGeneratedSingleReport = false;
+    }
+    renderTemplateNote();
     rememberCurrentInputs();
   });
 });
@@ -938,7 +945,7 @@ if (clearButton) {
 }
 
 hydrateSavedInputs();
-renderResult();
+renderTemplateNote();
 updateLeadCount();
 bulkCsv.value = demoCsv;
 renderBulkReport();

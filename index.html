@@ -27,7 +27,7 @@
         <a href="#process">服务流程</a>
         <a href="/login">登录</a>
         <a href="/language?lang=en&next=/en.html">EN</a>
-        <a class="nav-cta" href="#lead">免费测 3 个 SKU</a>
+        <a class="nav-cta" href="#lead">免费测 5 个 SKU</a>
       </nav>
     </header>
 
@@ -51,7 +51,7 @@
           </div>
           <dl class="hero-proof">
             <div>
-              <dt>3 SKU</dt>
+              <dt>5 SKU</dt>
               <dd>免费利润体检</dd>
             </div>
             <div>
@@ -135,8 +135,13 @@
                 单件其他成本（美元）
                 <input id="other-cost" type="number" min="0" step="0.01" value="0.6" />
               </label>
+              <label>
+                目标净利率（%）
+                <input id="target-profit-rate" type="number" min="1" step="0.1" value="12" />
+              </label>
             </div>
             <button class="button primary full" type="submit">生成利润体检</button>
+            <p class="form-note" id="free-quota-note"></p>
           </form>
 
           <div class="result-panel" id="single-result-panel" aria-live="polite" hidden>
@@ -161,6 +166,17 @@
                 <span>最大达人佣金</span>
                 <strong id="max-affiliate">0%</strong>
               </div>
+              <div>
+                <span>建议售价</span>
+                <strong id="target-price">$0.00</strong>
+              </div>
+            </div>
+            <div class="diagnosis-card">
+              <div>
+                <span>主要利润漏洞</span>
+                <strong id="loss-driver-title">等待测算</strong>
+              </div>
+              <p id="loss-driver-detail">生成体检后会自动指出最该优先优化的成本项。</p>
             </div>
             <div class="advice-box">
               <h3>优化建议</h3>
@@ -187,23 +203,28 @@
               </section>
               <section class="insight-card">
                 <div class="insight-heading">
-                  <span>利润敏感性分析</span>
-                  <strong>Stress Test</strong>
+                  <span>成本压力测试</span>
+                  <strong>抗风险</strong>
                 </div>
+                <p>模拟广告、退货、佣金或物流变贵后，这个 SKU 还剩多少利润。</p>
                 <div class="mini-table" id="sensitivity-results"></div>
               </section>
               <section class="insight-card">
                 <div class="insight-heading">
-                  <span>品类合规提醒</span>
-                  <strong>Compliance</strong>
+                  <span>上架前检查项</span>
+                  <strong>合规提示</strong>
                 </div>
+                <p>根据 SKU 名称识别可能需要提前确认的平台、认证或进口要求。</p>
                 <ul class="compliance-list" id="compliance-list"></ul>
               </section>
             </div>
             <div class="result-actions">
               <button class="button secondary" id="copy-single-report" type="button">复制单 SKU 报告</button>
               <button class="button secondary" id="save-calculation" type="button">保存到我的记录</button>
+              <button class="button secondary" id="create-temp-link" type="button">生成临时链接</button>
+              <a class="button primary" href="/login">登录解锁批量分析</a>
             </div>
+            <p class="form-note" id="temp-link-note"></p>
             <p class="form-note" id="save-calculation-note"></p>
           </div>
         </section>
@@ -260,7 +281,7 @@
           <p class="eyebrow">批量分析</p>
           <h2 id="bulk-title">批量 SKU 利润体检：把隐藏亏损品排出来。</h2>
           <p>
-            粘贴 CSV 数据或使用示例数据，系统会批量计算每个商品的净利润、净利率、保本售价和风险等级。适合先用 3 个 SKU 免费验证，再升级到 20 SKU 完整体检报告。
+            粘贴 CSV 数据或使用示例数据，系统会批量计算每个商品的净利润、净利率、保本售价和风险等级。适合先用 5 个 SKU 免费验证，再升级到 20 SKU 完整体检报告。
           </p>
         </div>
         <div class="bulk-layout">
@@ -302,6 +323,13 @@
                 <strong id="bulk-priority">0</strong>
               </div>
             </div>
+            <div class="diagnosis-card bulk-diagnosis" id="bulk-insights">
+              <div>
+                <span>批量摘要</span>
+                <strong>等待数据</strong>
+              </div>
+              <p>上传或粘贴 CSV 后会自动总结亏损、偏薄和优先处理 SKU。</p>
+            </div>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -328,6 +356,19 @@
           </div>
         </div>
       </section>
+
+      <div class="quota-modal" id="quota-modal" hidden>
+        <div class="quota-modal-card" role="dialog" aria-modal="true" aria-labelledby="quota-modal-title">
+          <button class="modal-close" id="quota-modal-close" type="button" aria-label="关闭">×</button>
+          <p class="eyebrow">免费额度已用完</p>
+          <h2 id="quota-modal-title">登录后继续生成利润体检。</h2>
+          <p>你已经免费测完 5 个 SKU。登录后可以继续保存记录、做批量分析，并查看历史体检。</p>
+          <div class="result-actions">
+            <a class="button primary" href="/login">立即登录</a>
+            <a class="button secondary" href="#pricing">查看月度套餐</a>
+          </div>
+        </div>
+      </div>
 
       <section class="section" id="sample" aria-labelledby="sample-title">
         <div class="section-heading">
@@ -405,14 +446,14 @@
       <section class="section split" id="lead" aria-labelledby="lead-title">
         <div>
           <p class="eyebrow">免费 SKU 体检</p>
-          <h2 id="lead-title">免费测 3 个 SKU，先确认有没有隐藏亏损。</h2>
+          <h2 id="lead-title">免费测 5 个 SKU，先确认有没有隐藏亏损。</h2>
           <p>
             先提交基础信息，不需要店铺后台权限。我们会根据你提供的成本数据给出初步判断，帮你确认哪些 SKU 需要优先复核。
           </p>
           <ul class="check-list">
             <li>适合 TikTok Shop、Shopify、Amazon、Walmart 卖家</li>
             <li>不需要店铺后台权限</li>
-            <li>先看 3 个 SKU 的真实利润，再决定是否做批量诊断</li>
+            <li>先看 5 个 SKU 的真实利润，再决定是否做批量诊断</li>
           </ul>
         </div>
         <form class="lead-form" id="lead-form">
@@ -456,7 +497,7 @@
         <div class="pricing-grid">
           <article class="price-card">
             <p class="plan-name">免费初筛</p>
-            <h3>测 3 个 SKU</h3>
+            <h3>测 5 个 SKU</h3>
             <strong>¥0</strong>
             <ul>
               <li>单 SKU 真实利润</li>
@@ -557,7 +598,7 @@
       <section class="section final-cta" aria-labelledby="final-cta-title">
         <div>
           <p class="eyebrow">开始体检</p>
-          <h2 id="final-cta-title">先免费测 3 个 SKU，看看有没有隐藏亏损。</h2>
+          <h2 id="final-cta-title">先免费测 5 个 SKU，看看有没有隐藏亏损。</h2>
           <p>不需要店铺后台权限，只要基础成本数据。我们会根据真实利润、保本售价和佣金上限给出初步判断。</p>
         </div>
         <div class="cta-actions">

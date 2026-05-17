@@ -19,6 +19,18 @@ const isEnglish = document.documentElement.lang.startsWith("en");
 const marketSearchInput = document.querySelector("#market-search");
 const marketComparisonSearchInput = document.querySelector("#market-comparison-search");
 const marketComparisonSearchButton = document.querySelector("#market-comparison-search-button");
+const freeQuotaNote = document.querySelector("#free-quota-note");
+const tempLinkButton = document.querySelector("#create-temp-link");
+const tempLinkNote = document.querySelector("#temp-link-note");
+const quotaModal = document.querySelector("#quota-modal");
+const quotaModalClose = document.querySelector("#quota-modal-close");
+
+const freeQuotaLimit = 5;
+const visitorIdKey = "skuauditpro-visitor-id";
+const freeQuotaKey = "skuauditpro-free-quota";
+let currentUser = null;
+let authLoaded = false;
+let latestSingleReport = null;
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -53,7 +65,7 @@ const text = isEnglish
       risk: "Risk level",
       recommendations: "Recommendations",
       leadCount: (count) => `${count} leads`,
-      leadSaved: "Saved. You can now follow up and ask for basic data from 3 SKUs.",
+      leadSaved: "Saved. You can now follow up and ask for basic data from 5 SKUs.",
       noLeads: "No leads to export yet",
       templateFile: "skuauditpro-sku-template.csv",
       templateUploaded: "CSV uploaded. Review the rows, then generate the report.",
@@ -65,6 +77,13 @@ const text = isEnglish
       saveFailed: "Could not save. Please try again.",
       marketAdded: (name) => `Added ${name} to the comparison.`,
       marketNotFound: "Country not found. Try its English name or 2-letter code.",
+      freeQuota: (remaining) => `${remaining}/${freeQuotaLimit} free audits remaining.`,
+      loggedInQuota: "You are logged in. Free audit limits do not apply.",
+      quotaFinished: "Your free audits are used up. Please log in to continue generating audits.",
+      loginLink: "Log in",
+      tempLinkCreated: "Temporary report link:",
+      targetPriceRange: (low, high) => `${low} - ${high}`,
+      noReportYet: "Generate an audit first.",
     }
   : {
       healthy: "健康",
@@ -93,7 +112,7 @@ const text = isEnglish
       risk: "风险等级",
       recommendations: "建议",
       leadCount: (count) => `当前 ${count} 条线索`,
-      leadSaved: "已保存。现在可以联系对方要 3 个 SKU 的基础数据。",
+      leadSaved: "已保存。现在可以联系对方要 5 个 SKU 的基础数据。",
       noLeads: "当前没有可导出的线索",
       templateFile: "skuauditpro-sku-template.csv",
       templateUploaded: "CSV 已上传。确认数据后可以生成体检报告。",
@@ -105,6 +124,13 @@ const text = isEnglish
       saveFailed: "保存失败，请稍后再试。",
       marketAdded: (name) => `已把 ${name} 加入对比。`,
       marketNotFound: "没有找到这个国家，请尝试中文名、英文名或两位国家代码。",
+      freeQuota: (remaining) => `免费额度剩余 ${remaining}/${freeQuotaLimit} 次。`,
+      loggedInQuota: "你已登录，不受免费额度限制。",
+      quotaFinished: "免费额度已用完，请登录后继续生成利润体检。",
+      loginLink: "去登录",
+      tempLinkCreated: "临时报告链接：",
+      targetPriceRange: (low, high) => `${low} - ${high}`,
+      noReportYet: "请先生成利润体检。",
     };
 
 const fields = [
@@ -121,6 +147,7 @@ const fields = [
   "ad-cost",
   "return-rate",
   "other-cost",
+  "target-profit-rate",
 ];
 
 const platformTemplates = {
@@ -383,6 +410,109 @@ function populateMarketControls() {
   }
 }
 
+function getVisitorId() {
+  let visitorId = localStorage.getItem(visitorIdKey);
+  if (!visitorId) {
+    visitorId =
+      window.crypto?.randomUUID?.() ||
+      `visitor-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    localStorage.setItem(visitorIdKey, visitorId);
+  }
+  return visitorId;
+}
+
+function getFreeQuotaState() {
+  const visitorId = getVisitorId();
+  try {
+    const saved = JSON.parse(localStorage.getItem(freeQuotaKey) || "{}");
+    if (saved.visitorId === visitorId) {
+      return {
+        visitorId,
+        used: Math.min(Math.max(Number(saved.used) || 0, 0), freeQuotaLimit),
+      };
+    }
+  } catch {
+    // Reset malformed quota records for this browser.
+  }
+  return { visitorId, used: 0 };
+}
+
+function saveFreeQuotaState(state) {
+  localStorage.setItem(
+    freeQuotaKey,
+    JSON.stringify({
+      visitorId: state.visitorId,
+      used: Math.min(Math.max(Number(state.used) || 0, 0), freeQuotaLimit),
+      updatedAt: new Date().toISOString(),
+    }),
+  );
+}
+
+function freeQuotaRemaining() {
+  return Math.max(0, freeQuotaLimit - getFreeQuotaState().used);
+}
+
+function updateFreeQuotaNote(message = "") {
+  if (!freeQuotaNote) {
+    return;
+  }
+  if (message) {
+    freeQuotaNote.innerHTML = message;
+    return;
+  }
+  freeQuotaNote.textContent = currentUser ? text.loggedInQuota : text.freeQuota(freeQuotaRemaining());
+}
+
+function showQuotaModal() {
+  if (quotaModal) {
+    quotaModal.removeAttribute("hidden");
+  }
+}
+
+function hideQuotaModal() {
+  if (quotaModal) {
+    quotaModal.setAttribute("hidden", "");
+  }
+}
+
+async function loadCurrentUser() {
+  if (authLoaded) {
+    return currentUser;
+  }
+  try {
+    const response = await fetch("/api/me");
+    if (response.ok) {
+      const data = await response.json();
+      currentUser = data.user || null;
+    }
+  } catch {
+    currentUser = null;
+  }
+  authLoaded = true;
+  updateFreeQuotaNote();
+  return currentUser;
+}
+
+async function consumeFreeQuota() {
+  const user = await loadCurrentUser();
+  if (user) {
+    updateFreeQuotaNote();
+    return true;
+  }
+
+  const state = getFreeQuotaState();
+  if (state.used >= freeQuotaLimit) {
+    updateFreeQuotaNote(`${text.quotaFinished} <a href="/login">${text.loginLink}</a>`);
+    showQuotaModal();
+    return false;
+  }
+
+  state.used += 1;
+  saveFreeQuotaState(state);
+  updateFreeQuotaNote();
+  return true;
+}
+
 function resetComparisonMarkets(targetId = document.querySelector("#market")?.value || "US") {
   comparisonMarketIds = [
     targetId,
@@ -470,6 +600,7 @@ function calculateFromData(data) {
   const adCost = Number(data.adCost) || 0;
   const returnRate = (Number(data.returnRate) || 0) / 100;
   const otherCost = Number(data.otherCost) || 0;
+  const targetProfitRate = Math.max(0.01, (Number(data.targetProfitRate) || 12) / 100);
 
   const variableFees = price * (platformRate + paymentRate + affiliateRate);
   const returnLoss = (cost + shipping + duty + otherCost) * returnRate;
@@ -479,11 +610,11 @@ function calculateFromData(data) {
   const fixedCost = cost + shipping + duty + adCost + returnLoss + otherCost;
   const rateCost = platformRate + paymentRate + affiliateRate;
   const breakEven = rateCost < 1 ? fixedCost / (1 - rateCost) : 0;
-  const targetProfitRate = 0.12;
   const maxAffiliateRate = Math.max(
     0,
     1 - targetProfitRate - platformRate - paymentRate - fixedCost / Math.max(price, 0.01),
   );
+  const targetPrice = rateCost + targetProfitRate < 1 ? fixedCost / (1 - rateCost - targetProfitRate) : 0;
 
   return {
     netProfit,
@@ -498,6 +629,13 @@ function calculateFromData(data) {
     shipping,
     duty,
     affiliateRate,
+    returnRate,
+    cost,
+    otherCost,
+    targetProfitRate,
+    targetPrice,
+    fixedCost,
+    rateCost,
   };
 }
 
@@ -513,6 +651,7 @@ function calculateProfit() {
     adCost: getNumber("ad-cost"),
     returnRate: getNumber("return-rate"),
     otherCost: getNumber("other-cost"),
+    targetProfitRate: getNumber("target-profit-rate"),
   });
 }
 
@@ -531,6 +670,7 @@ function getCurrentInputs() {
     adCost: getNumber("ad-cost"),
     returnRate: getNumber("return-rate"),
     otherCost: getNumber("other-cost"),
+    targetProfitRate: getNumber("target-profit-rate"),
   };
 }
 
@@ -553,6 +693,7 @@ function fillInputs(inputs) {
     adCost: "ad-cost",
     returnRate: "return-rate",
     otherCost: "other-cost",
+    targetProfitRate: "target-profit-rate",
   };
 
   Object.entries(map).forEach(([key, id]) => {
@@ -590,12 +731,32 @@ function hydrateSavedInputs() {
   }
 }
 
+function hydrateTemporaryReportFromUrl() {
+  const encodedReport = new URLSearchParams(window.location.hash.slice(1)).get("report");
+  if (!encodedReport) {
+    return false;
+  }
+
+  try {
+    const report = JSON.parse(decodeURIComponent(escape(window.atob(encodedReport))));
+    if (!report?.inputs) {
+      return false;
+    }
+    fillInputs(report.inputs);
+    renderResult();
+    document.querySelector("#calculator")?.scrollIntoView({ behavior: "smooth" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function buildAdvice(result) {
   const advice = [];
 
   if (result.margin < 0) {
     advice.push(text.adviceLoss);
-  } else if (result.margin < 0.12) {
+  } else if (result.margin < result.targetProfitRate) {
     advice.push(text.adviceWarning);
   } else {
     advice.push(text.adviceHealthy);
@@ -645,6 +806,84 @@ function getRisk(result) {
   return { label: text.healthy, className: "good", rank: 1 };
 }
 
+function suggestedPriceRange(result) {
+  const target = result.targetPrice || result.breakEven;
+  if (!target || !Number.isFinite(target)) {
+    return "-";
+  }
+  return text.targetPriceRange(money.format(target * 1.02), money.format(target * 1.12));
+}
+
+function getLossDriver(inputs, result) {
+  const price = Math.max(result.price || Number(inputs.price) || 0, 0.01);
+  const drivers = [
+    {
+      key: "shipping",
+      title: isEnglish ? "Logistics is eating margin" : "物流成本吃掉利润",
+      detail: isEnglish
+        ? "Try bundle packs, overseas stock, lighter packaging or a higher price point."
+        : "优先测试组合装、海外仓、轻包装，或者提高售价区间。",
+      score: (Number(inputs.shipping) + Number(inputs.duty)) / price,
+    },
+    {
+      key: "commission",
+      title: isEnglish ? "Commission is too high" : "达人佣金偏高",
+      detail: isEnglish
+        ? "Keep creator commission below the suggested ceiling before scaling."
+        : "放量前把达人佣金控制在建议上限以内。",
+      score: Number(inputs.affiliateRate) / 100,
+    },
+    {
+      key: "ads",
+      title: isEnglish ? "Ad cost needs a tighter ceiling" : "广告成本需要设上限",
+      detail: isEnglish
+        ? "Set a unit CPA ceiling and pause creatives that cannot stay below it."
+        : "给单件广告 CPA 设上限，超过上限的素材先暂停。",
+      score: Number(inputs.adCost) / price,
+    },
+    {
+      key: "returns",
+      title: isEnglish ? "Return loss can flip profit" : "退货损耗会吞利润",
+      detail: isEnglish
+        ? "Improve size, fit, material and expectation-setting on the product page."
+        : "优先优化尺寸、材质、使用预期和详情页说明。",
+      score: Number(inputs.returnRate) / 100,
+    },
+    {
+      key: "cost",
+      title: isEnglish ? "Product cost leaves little room" : "采购成本空间偏小",
+      detail: isEnglish
+        ? "Negotiate landed cost or move this SKU into a higher-value bundle."
+        : "尝试压低到岸成本，或把这个 SKU 放进更高客单价组合。",
+      score: Number(inputs.cost) / price,
+    },
+  ].sort((a, b) => b.score - a.score);
+
+  const driver = drivers[0];
+  if (result.margin >= result.targetProfitRate && driver.score < 0.18) {
+    return {
+      title: isEnglish ? "No major leak found" : "暂无明显利润漏洞",
+      detail: isEnglish
+        ? "Current assumptions still leave enough margin. Keep monitoring ads and returns while scaling."
+        : "当前假设下利润空间还可以，放量时重点继续监控广告和退货。",
+    };
+  }
+  return driver;
+}
+
+function marketRecommendation(row, index) {
+  if (index === 0) {
+    return { label: isEnglish ? "Target" : "目标市场", className: "" };
+  }
+  if (row.result.margin < 0) {
+    return { label: isEnglish ? "Avoid" : "暂缓", className: "bad" };
+  }
+  if (row.result.margin < 0.12) {
+    return { label: isEnglish ? "Watch" : "谨慎", className: "watch" };
+  }
+  return { label: isEnglish ? "Test" : "可测试", className: "" };
+}
+
 function applyPlatformTemplate() {
   const platform = document.querySelector("#platform").value;
   const template = platformTemplates[platform];
@@ -669,7 +908,11 @@ function applyPlatformTemplate() {
     }
   });
 
-  renderResult();
+  if (hasGeneratedSingleReport) {
+    renderResult();
+  } else {
+    renderTemplateNote();
+  }
   rememberCurrentInputs();
 }
 
@@ -703,13 +946,14 @@ function renderMarketComparison(inputs) {
   const rows = comparisonMarketIds
     .map((id) => marketById.get(id))
     .filter(Boolean)
-    .map((market) => {
+    .map((market, index) => {
       const result = calculateFromData({
         ...inputs,
         shipping: inputs.shipping * market.shippingMultiplier,
         duty: inputs.duty * market.dutyMultiplier,
       });
-      return { market, result, risk: getRisk(result) };
+      const row = { market, result, risk: getRisk(result) };
+      return { ...row, recommendation: marketRecommendation(row, index) };
     });
 
   container.innerHTML = rows
@@ -720,6 +964,7 @@ function renderMarketComparison(inputs) {
           <strong>${money.format(row.result.netProfit)}</strong>
           <span>${formatPercent(row.result.margin)}</span>
           <span class="risk-chip ${row.risk.className}">${row.risk.label}</span>
+          <span class="market-recommendation ${row.recommendation.className}">${row.recommendation.label}</span>
           <button class="mini-remove" data-remove-market="${escapeHtml(row.market.id)}" type="button">${isEnglish ? "Remove" : "删除"}</button>
         </div>
       `,
@@ -739,19 +984,19 @@ function renderSensitivity(inputs) {
 
   const scenarios = [
     {
-      name: isEnglish ? "Ad CPA +20%" : "广告 CPA +20%",
+      name: isEnglish ? "If ad cost rises 20%" : "广告成本贵 20%",
       data: { ...inputs, adCost: inputs.adCost * 1.2 },
     },
     {
-      name: isEnglish ? "Return rate +5 pts" : "退货率 +5 个点",
+      name: isEnglish ? "If returns rise 5 pts" : "退货率多 5 个点",
       data: { ...inputs, returnRate: inputs.returnRate + 5 },
     },
     {
-      name: isEnglish ? "Commission +5 pts" : "佣金 +5 个点",
+      name: isEnglish ? "If commission rises 5 pts" : "达人佣金多 5 个点",
       data: { ...inputs, affiliateRate: inputs.affiliateRate + 5 },
     },
     {
-      name: isEnglish ? "Shipping +15%" : "物流 +15%",
+      name: isEnglish ? "If shipping rises 15%" : "物流成本贵 15%",
       data: { ...inputs, shipping: inputs.shipping * 1.15 },
     },
   ];
@@ -787,22 +1032,22 @@ function renderComplianceHints(inputs, result) {
   };
 
   if (/led|lamp|light|battery|charger|usb|electronic|电|灯|充电|电池|补光/.test(sku)) {
-    pushHint(isEnglish ? "Electronics: check labeling, safety certification and battery/adapter rules." : "带电/电子类：注意标签、安全认证、电池或适配器规则。");
+    pushHint(isEnglish ? "Electronics: confirm labels, safety certification, battery and adapter rules before listing." : "带电/电子类：上架前确认标签、安全认证、电池和适配器规则。");
   }
   if (/kids|baby|toy|child|儿童|婴儿|玩具/.test(sku)) {
-    pushHint(isEnglish ? "Children's products: check age labeling, safety testing and marketplace restrictions." : "儿童用品：注意年龄标签、安全测试和平台限制。");
+    pushHint(isEnglish ? "Children's products: check age labels, safety tests and marketplace restrictions." : "儿童用品：确认年龄标签、安全测试和平台限制。");
   }
   if (/cosmetic|cream|makeup|skin|化妆|护肤|面霜/.test(sku)) {
-    pushHint(isEnglish ? "Cosmetics: verify ingredient, labeling and importer responsibility before scaling." : "化妆品/护肤类：放量前确认成分、标签和进口责任。");
+    pushHint(isEnglish ? "Cosmetics: verify ingredients, labels and importer responsibility before scaling." : "化妆品/护肤类：放量前确认成分、标签和进口责任。");
   }
   if (/food|kitchen|silicone|cup|食品|厨房|硅胶|杯/.test(sku)) {
-    pushHint(isEnglish ? "Food-contact items: check material declaration and food-contact compliance." : "食品接触类：注意材质声明和食品接触合规要求。");
+    pushHint(isEnglish ? "Food-contact items: check material declaration and food-contact rules." : "食品接触类：确认材质声明和食品接触合规要求。");
   }
-  if (result.margin < 0.12) {
-    pushHint(isEnglish ? "Commercial risk: margin is thin, so compliance or return issues can quickly turn this SKU unprofitable." : "经营风险：利润较薄，合规或退货问题会很快把该 SKU 拉成亏损。");
+  if (result.margin < result.targetProfitRate) {
+    pushHint(isEnglish ? "Business risk: margin is thin, so returns or compliance delays can quickly turn this SKU unprofitable." : "经营风险：利润较薄，退货或合规延误都可能很快把这个 SKU 拉成亏损。");
   }
   if (!hints.length) {
-    pushHint(isEnglish ? "No obvious category alert from the SKU name. Use this as a screening hint, not formal customs or legal advice." : "从 SKU 名称暂未识别明显品类风险。本提示仅作初筛，不替代正式报关、税务或法律意见。");
+    pushHint(isEnglish ? "No obvious category alert from the SKU name. Use this as a screening hint, not legal, tax or customs advice." : "从 SKU 名称暂未识别明显品类风险。本提示仅作初筛，不替代正式报关、税务或法律意见。");
   }
 
   list.innerHTML = hints.map((hint) => `<li>${escapeHtml(hint)}</li>`).join("");
@@ -830,7 +1075,7 @@ function renderResult() {
     badge.textContent = text.loss;
     badge.classList.add("danger");
     summary.textContent = text.lossSummary;
-  } else if (result.margin < 0.12) {
+  } else if (result.margin < result.targetProfitRate) {
     badge.textContent = text.warning;
     badge.classList.add("warning");
     summary.textContent = text.warningSummary;
@@ -843,6 +1088,10 @@ function renderResult() {
   document.querySelector("#margin").textContent = formatPercent(result.margin);
   document.querySelector("#break-even").textContent = money.format(result.breakEven);
   document.querySelector("#max-affiliate").textContent = formatPercent(result.maxAffiliateRate);
+  document.querySelector("#target-price").textContent = suggestedPriceRange(result);
+  const driver = getLossDriver(getCurrentInputs(), result);
+  document.querySelector("#loss-driver-title").textContent = driver.title;
+  document.querySelector("#loss-driver-detail").textContent = driver.detail;
 
   adviceList.innerHTML = "";
   buildAdvice(result).forEach((item) => {
@@ -852,6 +1101,14 @@ function renderResult() {
   });
 
   renderProfessionalInsights(result);
+  latestSingleReport = {
+    id: `local-${Date.now().toString(36)}`,
+    createdAt: new Date().toISOString(),
+    inputs: getCurrentInputs(),
+    result,
+    recommendations: buildAdvice(result),
+    driver,
+  };
 }
 
 function parseCsv(text) {
@@ -924,6 +1181,32 @@ function updateBulkSummary(rows) {
   document.querySelector("#bulk-loss").textContent = loss;
   document.querySelector("#bulk-margin").textContent = formatPercent(avgMargin);
   document.querySelector("#bulk-priority").textContent = priority;
+
+  const insights = document.querySelector("#bulk-insights");
+  if (!insights) {
+    return;
+  }
+  if (!count) {
+    insights.innerHTML = `
+      <div><span>${isEnglish ? "Bulk summary" : "批量摘要"}</span><strong>${isEnglish ? "Waiting for data" : "等待数据"}</strong></div>
+      <p>${isEnglish ? "Upload or paste CSV data to summarize loss-making, thin-margin and priority SKUs." : "上传或粘贴 CSV 后会自动总结亏损、偏薄和优先处理 SKU。"}</p>
+    `;
+    return;
+  }
+
+  const thin = rows.filter((row) => row.result.margin >= 0 && row.result.margin < 0.12).length;
+  const topPriority = rows.slice(0, 3).map((row) => row.sku || text.unnamedSku).join("、");
+  insights.innerHTML = `
+    <div>
+      <span>${isEnglish ? "Bulk summary" : "批量摘要"}</span>
+      <strong>${isEnglish ? `${loss} loss / ${thin} thin` : `${loss} 个亏损 / ${thin} 个偏薄`}</strong>
+    </div>
+    <p>${
+      isEnglish
+        ? `Review ${escapeHtml(topPriority)} first. They have the weakest margin or highest loss risk.`
+        : `建议优先复盘 ${escapeHtml(topPriority)}。这些 SKU 净利率最低或亏损风险最高。`
+    }</p>
+  `;
 }
 
 function exportBulkReport() {
@@ -967,6 +1250,30 @@ function downloadCsv(csv, filename) {
   URL.revokeObjectURL(url);
 }
 
+function createTemporaryReportLink() {
+  if (!latestSingleReport) {
+    if (tempLinkNote) {
+      tempLinkNote.textContent = text.noReportYet;
+    }
+    return;
+  }
+
+  try {
+    const encodedReport = window.btoa(unescape(encodeURIComponent(JSON.stringify(latestSingleReport))));
+    const url = new URL(window.location.href);
+    url.searchParams.delete("localReport");
+    url.hash = `report=${encodedReport}`;
+    if (tempLinkNote) {
+      tempLinkNote.innerHTML = `${text.tempLinkCreated} <a href="${url.toString()}">${url.toString()}</a>`;
+    }
+    copyText(url.toString(), tempLinkButton || { textContent: "" });
+  } catch {
+    if (tempLinkNote) {
+      tempLinkNote.textContent = isEnglish ? "Could not create a temporary link." : "临时链接生成失败，请稍后再试。";
+    }
+  }
+}
+
 async function copyText(value, successText) {
   try {
     await navigator.clipboard.writeText(value);
@@ -993,6 +1300,7 @@ function buildSingleReportText() {
   const market = marketProfiles.find((item) => item.id === document.querySelector("#market")?.value)?.name || "US";
   const result = calculateProfit();
   const risk = getRisk(result);
+  const driver = getLossDriver(getCurrentInputs(), result);
 
   return `${text.singleReportTitle}
 ${text.sku}: ${sku}
@@ -1001,6 +1309,8 @@ ${isEnglish ? "Market" : "目标市场"}: ${market}
 ${text.netProfit}: ${money.format(result.netProfit)}
 ${text.margin}: ${formatPercent(result.margin)}
 ${text.breakEven}: ${money.format(result.breakEven)}
+${isEnglish ? "Suggested price" : "建议售价"}: ${suggestedPriceRange(result)}
+${isEnglish ? "Main profit leak" : "主要利润漏洞"}: ${driver.title}
 ${text.maxAffiliate}: ${formatPercent(result.maxAffiliateRate)}
 ${text.risk}: ${risk.label}
 ${text.recommendations}:
@@ -1027,6 +1337,8 @@ async function saveCalculation() {
           netProfit: result.netProfit,
           margin: result.margin,
           breakEven: result.breakEven,
+          targetPrice: result.targetPrice,
+          targetProfitRate: result.targetProfitRate,
           maxAffiliateRate: result.maxAffiliateRate,
           totalCost: result.totalCost,
         },
@@ -1167,8 +1479,11 @@ function clearLeads() {
   updateLeadCount();
 }
 
-form.addEventListener("submit", (event) => {
+form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!(await consumeFreeQuota())) {
+    return;
+  }
   renderResult();
 });
 
@@ -1233,6 +1548,20 @@ uploadCsvInput.addEventListener("change", async () => {
 copySingleButton.dataset.original = copySingleButton.textContent;
 copySingleButton.addEventListener("click", () => copyText(buildSingleReportText(), copySingleButton));
 saveCalculationButton.addEventListener("click", saveCalculation);
+if (tempLinkButton) {
+  tempLinkButton.dataset.original = tempLinkButton.textContent;
+  tempLinkButton.addEventListener("click", createTemporaryReportLink);
+}
+if (quotaModalClose) {
+  quotaModalClose.addEventListener("click", hideQuotaModal);
+}
+if (quotaModal) {
+  quotaModal.addEventListener("click", (event) => {
+    if (event.target === quotaModal) {
+      hideQuotaModal();
+    }
+  });
+}
 if (exportButton) {
   exportButton.addEventListener("click", exportLeads);
 }
@@ -1244,6 +1573,10 @@ if (clearButton) {
 populateMarketControls();
 hydrateSavedInputs();
 renderTemplateNote();
+getVisitorId();
+loadCurrentUser();
+updateFreeQuotaNote();
+hydrateTemporaryReportFromUrl();
 updateLeadCount();
 bulkCsv.value = demoCsv;
 renderBulkReport();

@@ -423,6 +423,10 @@ textarea:focus {
   margin: 0;
 }
 
+#temp-link-note {
+  overflow-wrap: anywhere;
+}
+
 .result-panel {
   margin-top: 18px;
   border-top: 1px solid var(--line);
@@ -461,7 +465,7 @@ textarea:focus {
 }
 
 .metric-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 }
 
 .metric-grid div {
@@ -491,6 +495,43 @@ textarea:focus {
   padding: 14px;
 }
 
+.diagnosis-card {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.diagnosis-card div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.diagnosis-card span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.diagnosis-card strong {
+  color: var(--green-dark);
+}
+
+.diagnosis-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.bulk-diagnosis {
+  margin: 12px 0;
+}
+
 .result-actions {
   display: flex;
   flex-wrap: wrap;
@@ -514,7 +555,7 @@ textarea:focus {
 .insight-heading,
 .mini-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) auto auto auto auto;
+  grid-template-columns: minmax(0, 1.2fr) repeat(5, auto);
   gap: 10px;
   align-items: center;
 }
@@ -574,6 +615,71 @@ textarea:focus {
 .mini-remove:hover {
   border-color: var(--red);
   color: var(--red);
+}
+
+.market-recommendation {
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: #e2f5ed;
+  color: var(--green-dark);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.market-recommendation.watch {
+  background: #fff4d8;
+  color: #875f00;
+}
+
+.market-recommendation.bad {
+  background: #ffe5e5;
+  color: #a52d2d;
+}
+
+.quota-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(8, 28, 22, 0.48);
+}
+
+.quota-modal[hidden] {
+  display: none;
+}
+
+.quota-modal-card {
+  position: relative;
+  width: min(520px, 100%);
+  border-radius: 8px;
+  background: #fff;
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.quota-modal-card h2 {
+  margin-bottom: 8px;
+}
+
+.quota-modal-card p:not(.eyebrow) {
+  color: var(--muted);
+}
+
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
 }
 
 .compliance-list {

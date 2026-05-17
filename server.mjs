@@ -38,11 +38,11 @@ const adminCode = process.env.ADMIN_CODE || "skuprofit-admin";
 const plans = [
   {
     id: "free-3-sku",
-    name: "免费测 3 个 SKU",
+    name: "免费测 5 个 SKU",
     priceCny: 0,
     priceHkd: 0,
     interval: "once",
-    features: ["3 个 SKU 利润体检", "风险等级", "保本售价", "初步优化建议"],
+    features: ["5 个 SKU 利润体检", "风险等级", "保本售价", "初步优化建议"],
   },
   {
     id: "audit-20-sku",

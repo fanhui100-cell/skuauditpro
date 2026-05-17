@@ -26,7 +26,7 @@
         <a href="#pricing">Pricing</a>
         <a href="/login">Login</a>
         <a href="/language?lang=zh&next=/index.html">中文</a>
-        <a class="nav-cta" href="#lead">Audit 3 SKUs Free</a>
+        <a class="nav-cta" href="#lead">Audit 5 SKUs Free</a>
       </nav>
     </header>
 
@@ -36,11 +36,12 @@
           <p class="eyebrow">SKU profit audit for cross-border sellers</p>
           <h1 id="hero-title">Find the SKUs that look good in GMV but quietly lose money.</h1>
           <p class="hero-subtitle">
-            Add product cost, logistics, duties, platform fees, affiliate commission, ad spend and return loss. Get true net profit, break-even price, commission limit and risk level in minutes.
+            Add product cost, logistics, duties, platform fees, affiliate commission, ad spend and return loss. Start with 5 free audits, then keep monitoring from $4/mo.
           </p>
           <div class="hero-tags" aria-label="Key benefits">
             <span>No store access required</span>
             <span>Bulk CSV supported</span>
+            <span>From $4/mo</span>
             <span>20-SKU audit report</span>
           </div>
           <div class="hero-actions">
@@ -50,7 +51,7 @@
           </div>
           <dl class="hero-proof">
             <div>
-              <dt>3 SKUs</dt>
+              <dt>5 SKUs</dt>
               <dd>free margin audit</dd>
             </div>
             <div>
@@ -134,8 +135,13 @@
                 Other cost per unit (USD)
                 <input id="other-cost" type="number" min="0" step="0.01" value="0.6" />
               </label>
+              <label>
+                Target margin (%)
+                <input id="target-profit-rate" type="number" min="1" step="0.1" value="12" />
+              </label>
             </div>
             <button class="button primary full" type="submit">Generate Audit</button>
+            <p class="form-note" id="free-quota-note"></p>
           </form>
 
           <div class="result-panel" id="single-result-panel" aria-live="polite" hidden>
@@ -160,6 +166,17 @@
                 <span>Max commission</span>
                 <strong id="max-affiliate">0%</strong>
               </div>
+              <div>
+                <span>Suggested price</span>
+                <strong id="target-price">$0.00</strong>
+              </div>
+            </div>
+            <div class="diagnosis-card">
+              <div>
+                <span>Main profit leak</span>
+                <strong id="loss-driver-title">Waiting for audit</strong>
+              </div>
+              <p id="loss-driver-detail">After the audit, we will highlight the cost item to fix first.</p>
             </div>
             <div class="advice-box">
               <h3>Recommendations</h3>
@@ -186,23 +203,28 @@
               </section>
               <section class="insight-card">
                 <div class="insight-heading">
-                  <span>Margin sensitivity</span>
-                  <strong>Stress Test</strong>
+                  <span>Cost pressure test</span>
+                  <strong>Risk buffer</strong>
                 </div>
+                <p>See what happens if ads, returns, commission or shipping get more expensive.</p>
                 <div class="mini-table" id="sensitivity-results"></div>
               </section>
               <section class="insight-card">
                 <div class="insight-heading">
-                  <span>Category compliance hints</span>
+                  <span>Pre-listing checks</span>
                   <strong>Compliance</strong>
                 </div>
+                <p>Early hints for platform, certification or import checks based on the SKU name.</p>
                 <ul class="compliance-list" id="compliance-list"></ul>
               </section>
             </div>
             <div class="result-actions">
               <button class="button secondary" id="copy-single-report" type="button">Copy SKU Report</button>
               <button class="button secondary" id="save-calculation" type="button">Save to Dashboard</button>
+              <button class="button secondary" id="create-temp-link" type="button">Create Temp Link</button>
+              <a class="button primary" href="/login">Log in for bulk audit</a>
             </div>
+            <p class="form-note" id="temp-link-note"></p>
             <p class="form-note" id="save-calculation-note"></p>
           </div>
         </section>
@@ -301,6 +323,13 @@
                 <strong id="bulk-priority">0</strong>
               </div>
             </div>
+            <div class="diagnosis-card bulk-diagnosis" id="bulk-insights">
+              <div>
+                <span>Bulk summary</span>
+                <strong>Waiting for data</strong>
+              </div>
+              <p>Upload or paste CSV data to summarize loss-making, thin-margin and priority SKUs.</p>
+            </div>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -327,6 +356,19 @@
           </div>
         </div>
       </section>
+
+      <div class="quota-modal" id="quota-modal" hidden>
+        <div class="quota-modal-card" role="dialog" aria-modal="true" aria-labelledby="quota-modal-title">
+          <button class="modal-close" id="quota-modal-close" type="button" aria-label="Close">×</button>
+          <p class="eyebrow">Free audits used up</p>
+          <h2 id="quota-modal-title">Log in to keep generating audits.</h2>
+          <p>You have used 5 free SKU audits. Log in to keep records, run bulk audits and review your history.</p>
+          <div class="result-actions">
+            <a class="button primary" href="/login">Log in now</a>
+            <a class="button secondary" href="#pricing">View monthly plans</a>
+          </div>
+        </div>
+      </div>
 
       <section class="section" id="sample" aria-labelledby="sample-title">
         <div class="section-heading">
@@ -404,14 +446,14 @@
       <section class="section split" id="lead" aria-labelledby="lead-title">
         <div>
           <p class="eyebrow">Free SKU audit</p>
-          <h2 id="lead-title">Get a free 3-SKU audit.</h2>
+          <h2 id="lead-title">Get a free 5-SKU audit.</h2>
           <p>
             No store login required. Send basic cost data and receive a short margin risk report.
           </p>
           <ul class="check-list">
             <li>Built for TikTok Shop, Shopify, Amazon and Walmart sellers</li>
             <li>No backend or store permission needed</li>
-            <li>Start with 3 SKUs, then decide whether a bulk audit is useful</li>
+            <li>Start with 5 SKUs, then decide whether a bulk audit is useful</li>
           </ul>
         </div>
         <form class="lead-form" id="lead-form">
@@ -455,7 +497,7 @@
         <div class="pricing-grid">
           <article class="price-card">
             <p class="plan-name">Free screening</p>
-            <h3>3-SKU Audit</h3>
+            <h3>5-SKU Audit</h3>
             <strong>$0</strong>
             <ul>
               <li>True profit per SKU</li>
@@ -517,7 +559,7 @@
       <section class="section final-cta" aria-labelledby="final-cta-title">
         <div>
           <p class="eyebrow">Start the audit</p>
-          <h2 id="final-cta-title">Audit 3 SKUs free and find hidden margin leaks.</h2>
+          <h2 id="final-cta-title">Audit 5 SKUs free and find hidden margin leaks.</h2>
           <p>No store access required. Send basic cost data and get an initial view of true profit, break-even price and commission limits.</p>
         </div>
         <div class="cta-actions">

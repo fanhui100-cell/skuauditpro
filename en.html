@@ -85,13 +85,9 @@
               <div class="field-with-search">
                 <label>
                   Target market
-                  <select id="market"></select>
+                  <input id="market-search" list="country-options" type="search" value="United States" placeholder="Search country, e.g. US, Japan, Brazil" />
+                  <select id="market" class="visually-hidden-field" aria-hidden="true" tabindex="-1"></select>
                 </label>
-                <div class="search-row">
-                  <input id="market-search" list="country-options" type="search" placeholder="Search country, e.g. US, Japan, Brazil" />
-                  <button class="button secondary compact-button" id="market-search-button" type="button">Search</button>
-                </div>
-                <p class="form-note compact-note" id="market-search-note"></p>
               </div>
               <datalist id="country-options"></datalist>
               <label>
@@ -184,7 +180,7 @@
                 </div>
                 <div class="search-row compact-search">
                   <input id="market-comparison-search" list="country-options" type="search" placeholder="Search a country to add" />
-                  <button class="button secondary compact-button" id="market-comparison-search-button" type="button">Search</button>
+                  <button class="button secondary compact-button" id="market-comparison-search-button" type="button">Add country</button>
                 </div>
                 <div class="mini-table" id="market-comparison-results"></div>
               </section>

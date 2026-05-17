@@ -17,8 +17,6 @@ const leadReportLink = document.querySelector("#lead-report-link");
 const bulkNote = document.querySelector("#bulk-note");
 const isEnglish = document.documentElement.lang.startsWith("en");
 const marketSearchInput = document.querySelector("#market-search");
-const marketSearchButton = document.querySelector("#market-search-button");
-const marketSearchNote = document.querySelector("#market-search-note");
 const marketComparisonSearchInput = document.querySelector("#market-comparison-search");
 const marketComparisonSearchButton = document.querySelector("#market-comparison-search-button");
 
@@ -65,7 +63,6 @@ const text = isEnglish
       calculationSaved: "Saved to your dashboard.",
       loginToSave: "Please log in before saving calculation history.",
       saveFailed: "Could not save. Please try again.",
-      marketSelected: (name) => `Selected market: ${name}`,
       marketAdded: (name) => `Added ${name} to the comparison.`,
       marketNotFound: "Country not found. Try its English name or 2-letter code.",
     }
@@ -106,7 +103,6 @@ const text = isEnglish
       calculationSaved: "已保存到你的计算记录。",
       loginToSave: "请先登录，再保存计算记录。",
       saveFailed: "保存失败，请稍后再试。",
-      marketSelected: (name) => `已选择目标市场：${name}`,
       marketAdded: (name) => `已把 ${name} 加入对比。`,
       marketNotFound: "没有找到这个国家，请尝试中文名、英文名或两位国家代码。",
     };
@@ -314,7 +310,7 @@ const marketProfiles = allCountryCodes
   .sort((a, b) => a.name.localeCompare(b.name, isEnglish ? "en" : "zh-CN"));
 
 const marketById = new Map(marketProfiles.map((market) => [market.id, market]));
-let selectedComparisonMarketId = "";
+let comparisonMarketIds = [];
 
 const getNumber = (id) => {
   const value = Number.parseFloat(document.querySelector(`#${id}`).value);
@@ -376,6 +372,9 @@ function populateMarketControls() {
     .map((market) => `<option value="${market.id}">${escapeHtml(market.name)}</option>`)
     .join("");
   marketSelect.value = "US";
+  if (marketSearchInput) {
+    marketSearchInput.value = marketById.get("US")?.name || "United States";
+  }
 
   if (datalist) {
     datalist.innerHTML = marketProfiles
@@ -384,12 +383,18 @@ function populateMarketControls() {
   }
 }
 
+function resetComparisonMarkets(targetId = document.querySelector("#market")?.value || "US") {
+  comparisonMarketIds = [
+    targetId,
+    ...tradeMarketIds.filter((id) => id !== targetId),
+  ].slice(0, 5);
+}
+
 function selectTargetMarketFromSearch() {
   const market = findMarket(marketSearchInput?.value);
   if (!market) {
-    if (marketSearchNote) {
-      marketSearchNote.textContent = text.marketNotFound;
-    }
+    marketSearchInput.value = marketById.get(document.querySelector("#market")?.value || "US")?.name || "";
+    marketSearchInput.placeholder = text.marketNotFound;
     return;
   }
 
@@ -397,10 +402,16 @@ function selectTargetMarketFromSearch() {
   if (marketSearchInput) {
     marketSearchInput.value = market.name;
   }
-  if (marketSearchNote) {
-    marketSearchNote.textContent = text.marketSelected(market.name);
-  }
+  resetComparisonMarkets(market.id);
+  renderMarketComparison(getCurrentInputs());
   rememberCurrentInputs();
+}
+
+function addComparisonMarket(market) {
+  if (!market || comparisonMarketIds.includes(market.id)) {
+    return;
+  }
+  comparisonMarketIds = [...comparisonMarketIds, market.id];
 }
 
 function searchComparisonMarket() {
@@ -413,11 +424,16 @@ function searchComparisonMarket() {
     return;
   }
 
-  selectedComparisonMarketId = market.id;
+  addComparisonMarket(market);
   if (marketComparisonSearchInput) {
     marketComparisonSearchInput.value = market.name;
     marketComparisonSearchInput.placeholder = text.marketAdded(market.name);
   }
+  renderMarketComparison(getCurrentInputs());
+}
+
+function removeComparisonMarket(marketId) {
+  comparisonMarketIds = comparisonMarketIds.filter((id) => id !== marketId);
   renderMarketComparison(getCurrentInputs());
 }
 
@@ -543,6 +559,10 @@ function fillInputs(inputs) {
     const field = document.querySelector(`#${id}`);
     if (field && inputs[key] !== undefined) {
       field.value = key === "market" && inputs[key] === "UK" ? "GB" : inputs[key];
+      if (key === "market" && marketSearchInput) {
+        marketSearchInput.value = marketById.get(field.value)?.name || marketSearchInput.value;
+        resetComparisonMarkets(field.value);
+      }
     }
   });
 }
@@ -676,10 +696,11 @@ function renderMarketComparison(inputs) {
     return;
   }
 
-  const comparisonIds = selectedComparisonMarketId
-    ? [selectedComparisonMarketId, ...tradeMarketIds.filter((id) => id !== selectedComparisonMarketId)]
-    : tradeMarketIds;
-  const rows = comparisonIds
+  if (!comparisonMarketIds.length) {
+    resetComparisonMarkets(inputs.market || "US");
+  }
+
+  const rows = comparisonMarketIds
     .map((id) => marketById.get(id))
     .filter(Boolean)
     .map((market) => {
@@ -689,15 +710,6 @@ function renderMarketComparison(inputs) {
         duty: inputs.duty * market.dutyMultiplier,
       });
       return { market, result, risk: getRisk(result) };
-    })
-    .sort((a, b) => {
-      if (a.market.id === selectedComparisonMarketId) {
-        return -1;
-      }
-      if (b.market.id === selectedComparisonMarketId) {
-        return 1;
-      }
-      return b.result.margin - a.result.margin;
     });
 
   container.innerHTML = rows
@@ -708,10 +720,15 @@ function renderMarketComparison(inputs) {
           <strong>${money.format(row.result.netProfit)}</strong>
           <span>${formatPercent(row.result.margin)}</span>
           <span class="risk-chip ${row.risk.className}">${row.risk.label}</span>
+          <button class="mini-remove" data-remove-market="${escapeHtml(row.market.id)}" type="button">${isEnglish ? "Remove" : "删除"}</button>
         </div>
       `,
     )
     .join("");
+
+  container.querySelectorAll("[data-remove-market]").forEach((button) => {
+    button.addEventListener("click", () => removeComparisonMarket(button.dataset.removeMarket));
+  });
 }
 
 function renderSensitivity(inputs) {
@@ -1167,10 +1184,9 @@ fields.forEach((id) => {
 });
 
 document.querySelector("#platform").addEventListener("change", applyPlatformTemplate);
-if (marketSearchButton) {
-  marketSearchButton.addEventListener("click", selectTargetMarketFromSearch);
-}
 if (marketSearchInput) {
+  marketSearchInput.addEventListener("change", selectTargetMarketFromSearch);
+  marketSearchInput.addEventListener("blur", selectTargetMarketFromSearch);
   marketSearchInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();

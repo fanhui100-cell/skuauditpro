@@ -3,9 +3,9 @@ let companyLogoDataUrl = "";
 
 const adminPlanOptions = [
   { id: "free-3-sku", name: "免费测 3 个 SKU" },
-  { id: "audit-20-sku", name: "20 SKU 利润体检" },
-  { id: "store-audit", name: "整店利润诊断" },
-  { id: "pro-monthly", name: "Pro 月度监控" },
+  { id: "audit-20-sku", name: "入门月度包" },
+  { id: "store-audit", name: "增长月度包" },
+  { id: "pro-monthly", name: "服务商月度包" },
 ];
 
 const invoiceStatusText = {
@@ -342,9 +342,9 @@ document.querySelector("#quote-form").addEventListener("submit", async (event) =
       }),
     });
     event.target.reset();
-    document.querySelector("#quote-service").value = "20 SKU 利润体检报告";
+    document.querySelector("#quote-service").value = "入门月度包";
     document.querySelector("#quote-plan").value = "audit-20-sku";
-    document.querySelector("#quote-amount").value = "328";
+    document.querySelector("#quote-amount").value = "32";
     document.querySelector("#quote-valid-days").value = "7";
     message.textContent = "报价已创建。客户登录同邮箱账号后可接受报价。";
     await loadBilling();

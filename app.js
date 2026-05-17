@@ -164,10 +164,29 @@ const platformTemplates = {
 };
 
 const marketProfiles = [
-  { id: "US", name: isEnglish ? "United States" : "美国", shippingMultiplier: 1, dutyMultiplier: 1 },
-  { id: "UK", name: isEnglish ? "United Kingdom" : "英国", shippingMultiplier: 1.12, dutyMultiplier: 1.18 },
-  { id: "DE", name: isEnglish ? "Germany" : "德国", shippingMultiplier: 1.18, dutyMultiplier: 1.22 },
-  { id: "CA", name: isEnglish ? "Canada" : "加拿大", shippingMultiplier: 1.1, dutyMultiplier: 1.12 },
+  { id: "US", name: isEnglish ? "United States" : "\u7f8e\u56fd", shippingMultiplier: 1, dutyMultiplier: 1 },
+  { id: "UK", name: isEnglish ? "United Kingdom" : "\u82f1\u56fd", shippingMultiplier: 1.12, dutyMultiplier: 1.18 },
+  { id: "DE", name: isEnglish ? "Germany" : "\u5fb7\u56fd", shippingMultiplier: 1.18, dutyMultiplier: 1.22 },
+  { id: "CA", name: isEnglish ? "Canada" : "\u52a0\u62ff\u5927", shippingMultiplier: 1.1, dutyMultiplier: 1.12 },
+  { id: "FR", name: isEnglish ? "France" : "\u6cd5\u56fd", shippingMultiplier: 1.18, dutyMultiplier: 1.21 },
+  { id: "IT", name: isEnglish ? "Italy" : "\u610f\u5927\u5229", shippingMultiplier: 1.2, dutyMultiplier: 1.23 },
+  { id: "ES", name: isEnglish ? "Spain" : "\u897f\u73ed\u7259", shippingMultiplier: 1.16, dutyMultiplier: 1.2 },
+  { id: "NL", name: isEnglish ? "Netherlands" : "\u8377\u5170", shippingMultiplier: 1.14, dutyMultiplier: 1.18 },
+  { id: "PL", name: isEnglish ? "Poland" : "\u6ce2\u5170", shippingMultiplier: 1.18, dutyMultiplier: 1.2 },
+  { id: "AU", name: isEnglish ? "Australia" : "\u6fb3\u5927\u5229\u4e9a", shippingMultiplier: 1.25, dutyMultiplier: 1.12 },
+  { id: "NZ", name: isEnglish ? "New Zealand" : "\u65b0\u897f\u5170", shippingMultiplier: 1.3, dutyMultiplier: 1.1 },
+  { id: "JP", name: isEnglish ? "Japan" : "\u65e5\u672c", shippingMultiplier: 1.05, dutyMultiplier: 1.08 },
+  { id: "KR", name: isEnglish ? "South Korea" : "\u97e9\u56fd", shippingMultiplier: 1.08, dutyMultiplier: 1.1 },
+  { id: "SG", name: isEnglish ? "Singapore" : "\u65b0\u52a0\u5761", shippingMultiplier: 0.9, dutyMultiplier: 0.95 },
+  { id: "MY", name: isEnglish ? "Malaysia" : "\u9a6c\u6765\u897f\u4e9a", shippingMultiplier: 0.95, dutyMultiplier: 1 },
+  { id: "TH", name: isEnglish ? "Thailand" : "\u6cf0\u56fd", shippingMultiplier: 0.98, dutyMultiplier: 1.02 },
+  { id: "VN", name: isEnglish ? "Vietnam" : "\u8d8a\u5357", shippingMultiplier: 1.02, dutyMultiplier: 1.05 },
+  { id: "PH", name: isEnglish ? "Philippines" : "\u83f2\u5f8b\u5bbe", shippingMultiplier: 1.05, dutyMultiplier: 1.05 },
+  { id: "ID", name: isEnglish ? "Indonesia" : "\u5370\u5c3c", shippingMultiplier: 1.08, dutyMultiplier: 1.08 },
+  { id: "MX", name: isEnglish ? "Mexico" : "\u58a8\u897f\u54e5", shippingMultiplier: 1.2, dutyMultiplier: 1.12 },
+  { id: "BR", name: isEnglish ? "Brazil" : "\u5df4\u897f", shippingMultiplier: 1.35, dutyMultiplier: 1.35 },
+  { id: "AE", name: isEnglish ? "United Arab Emirates" : "\u963f\u8054\u914b", shippingMultiplier: 1.05, dutyMultiplier: 1 },
+  { id: "SA", name: isEnglish ? "Saudi Arabia" : "\u6c99\u7279\u963f\u62c9\u4f2f", shippingMultiplier: 1.08, dutyMultiplier: 1.05 },
 ];
 
 const getNumber = (id) => {

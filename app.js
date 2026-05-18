@@ -1898,6 +1898,12 @@ if (clearButton) {
   clearButton.addEventListener("click", clearLeads);
 }
 
+document.querySelectorAll("[data-upgrade-plan]").forEach((link) => {
+  link.addEventListener("click", () => {
+    localStorage.setItem("skuauditpro-upgrade-plan", link.dataset.upgradePlan);
+  });
+});
+
 populateMarketControls();
 hydrateSavedInputs();
 renderTemplateNote();

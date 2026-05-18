@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>付款开通 | SKUAuditPro</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">
+        <span class="brand-mark">SA</span>
+        <span>SKUAuditPro</span>
+      </a>
+      <nav class="nav-links" aria-label="付款导航">
+        <a href="/#pricing">返回套餐</a>
+        <a href="dashboard.html">账户中心</a>
+        <a href="refund.html">退款说明</a>
+      </nav>
+    </header>
+
+    <main class="checkout-page">
+      <section class="section checkout-hero">
+        <div>
+          <p class="eyebrow">独立付款页</p>
+          <h1>扫码付款开通 SKU 套餐。</h1>
+          <p>
+            确认套餐后，用微信或支付宝扫码付款。付款备注请填写注册邮箱或订单号，付款后提交付款备注，我们核对到账后开通额度。
+          </p>
+        </div>
+        <a class="button secondary" href="/#pricing">重新选择套餐</a>
+      </section>
+
+      <section class="section checkout-layout">
+        <aside class="checkout-summary">
+          <p class="eyebrow">当前选择</p>
+          <h2 id="checkout-plan-name">加载中...</h2>
+          <strong id="checkout-plan-price">-</strong>
+          <div class="checkout-plan-tabs" id="checkout-plan-tabs"></div>
+          <ul id="checkout-plan-features"></ul>
+        </aside>
+
+        <div class="checkout-main">
+          <div class="manual-pay-panel">
+            <strong>扫码付款流程</strong>
+            <ol class="pay-steps">
+              <li>确认左侧套餐和金额。</li>
+              <li>使用微信或支付宝扫描下方二维码付款。</li>
+              <li>付款备注填写注册邮箱或订单号。</li>
+              <li>登录后创建订单并提交付款时间、付款人姓名或截图说明。</li>
+            </ol>
+          </div>
+
+          <div class="qr-grid checkout-qr-grid" id="checkout-qr-list"></div>
+
+          <form class="lead-form checkout-order-form" id="checkout-order-form">
+            <h3>创建订单并提交备注</h3>
+            <p class="form-note" id="checkout-auth-note"></p>
+            <label>
+              付款方式
+              <select id="checkout-method"></select>
+            </label>
+            <button class="button primary full" id="checkout-create-order" type="submit">创建订单</button>
+            <p class="form-note legal-note">
+              创建订单前请阅读 <a href="refund.html">退款与交付说明</a>。管理员核对到账后会开通对应套餐额度。
+            </p>
+            <p class="form-note" id="checkout-message"></p>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <script src="checkout.js"></script>
+  </body>
+</html>

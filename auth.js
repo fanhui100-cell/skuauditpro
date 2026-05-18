@@ -21,6 +21,14 @@ const nameRow = document.querySelector("#name-row");
 const submit = document.querySelector("#auth-submit");
 const message = document.querySelector("#auth-message");
 const forgotPassword = document.querySelector("#forgot-password");
+const nextParam = new URLSearchParams(window.location.search).get("next");
+
+function safeNextUrl() {
+  if (!nextParam || !nextParam.startsWith("/") || nextParam.startsWith("//")) {
+    return "/dashboard.html";
+  }
+  return nextParam;
+}
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -46,7 +54,7 @@ function setMode(nextMode) {
 async function checkLoggedIn() {
   const { user } = await api("/api/me");
   if (user) {
-    window.location.href = "/dashboard.html";
+    window.location.href = safeNextUrl();
   }
 }
 
@@ -72,7 +80,7 @@ form.addEventListener("submit", async (event) => {
         password: document.querySelector("#password").value,
       }),
     });
-    window.location.href = "/dashboard.html";
+    window.location.href = safeNextUrl();
   } catch (error) {
     message.textContent = error.message;
   }
@@ -112,7 +120,7 @@ function escapeHtml(value) {
 document.querySelectorAll("[data-provider]").forEach((button) => {
   button.addEventListener("click", () => {
     if (button.dataset.provider === "google") {
-      window.location.href = `/api/auth/google?next=${encodeURIComponent("/dashboard.html")}`;
+      window.location.href = `/api/auth/google?next=${encodeURIComponent(safeNextUrl())}`;
     }
   });
 });

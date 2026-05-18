@@ -4,6 +4,7 @@ let calculations = [];
 let currentUser = null;
 let quotes = [];
 let invoices = [];
+const pendingUpgradeKey = "skuauditpro-upgrade-plan";
 
 const statusText = {
   paid: "已开通",
@@ -93,6 +94,7 @@ async function loadDashboard() {
   await loadCalculations();
   await loadBilling();
   await loadOrders();
+  applyPendingUpgrade();
 }
 
 function renderPlans() {
@@ -114,10 +116,29 @@ function renderPlans() {
 
   document.querySelectorAll("[data-plan]").forEach((button) => {
     button.addEventListener("click", () => {
-      document.querySelector("#checkout-plan").value = button.dataset.plan;
-      document.querySelector("#checkout").scrollIntoView({ behavior: "smooth" });
+      window.location.href = `/checkout.html?plan=${encodeURIComponent(button.dataset.plan)}`;
     });
   });
+}
+
+function showCheckout(planId) {
+  const checkout = document.querySelector("#checkout");
+  const planSelect = document.querySelector("#checkout-plan");
+  checkout.hidden = false;
+  if (planId && plans.some((plan) => plan.id === planId)) {
+    planSelect.value = planId;
+  }
+  checkout.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function applyPendingUpgrade() {
+  const params = new URLSearchParams(window.location.search);
+  const planId = params.get("plan") || localStorage.getItem(pendingUpgradeKey);
+  if (!planId || !plans.some((plan) => plan.id === planId)) {
+    return;
+  }
+  localStorage.removeItem(pendingUpgradeKey);
+  window.location.href = `/checkout.html?plan=${encodeURIComponent(planId)}`;
 }
 
 function renderPayments() {

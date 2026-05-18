@@ -126,9 +126,16 @@ function renderPayments() {
     .map(
       (method) => `
         <article class="payment-item">
-          <strong>${method.name}</strong>
-          <span>${method.currency} · ${method.status}</span>
-          <p>${method.note}</p>
+          <div>
+            <strong>${method.name}</strong>
+            <span>${method.currency} · ${method.status}</span>
+            <p>${method.note}</p>
+          </div>
+          ${
+            method.qrImage
+              ? `<img class="payment-qr" src="${method.qrImage}" alt="${method.name} QR code" loading="lazy" />`
+              : ""
+          }
         </article>
       `,
     )

@@ -93,18 +93,20 @@ const planQuotas = {
 
 const paymentMethods = [
   {
-    id: "manual-cn-bank",
-    name: "国内银行卡转账",
+    id: "alipay-qr",
+    name: "支付宝扫码付款",
     currency: "CNY",
     status: "ready",
-    note: "适合人民币付款。提交付款备注后，我们会核对收款并开通对应服务。",
+    qrImage: "/assets/pay/alipay-pay.png",
+    note: "打开支付宝扫一扫付款。付款备注请填写注册邮箱或订单号，付款后在订单里提交备注，我们人工核对后开通套餐。",
   },
   {
-    id: "manual-hk-bank",
-    name: "香港银行卡 / FPS 转账",
-    currency: "HKD",
+    id: "wechat-qr",
+    name: "微信扫码付款",
+    currency: "CNY",
     status: "ready",
-    note: "适合香港账户付款，可通过银行转账或 FPS 完成付款确认。",
+    qrImage: "/assets/pay/wechat-pay.png",
+    note: "打开微信扫一扫付款。付款备注请填写注册邮箱或订单号，付款后在订单里提交备注，我们人工核对后开通套餐。",
   },
   {
     id: "stripe-hk",
@@ -118,7 +120,7 @@ const paymentMethods = [
     name: "人工对公/服务商代收",
     currency: "CNY/HKD",
     status: "ready",
-    note: "适合服务商、团队或对公客户统一结算，付款后按约定开通服务。",
+    note: "适合服务商、团队或对公客户统一结算。请先联系我们确认金额，付款后按约定开通服务。",
   },
 ];
 

@@ -14,6 +14,8 @@ node server.mjs
 http://127.0.0.1:4173/
 ```
 
+生产域名已按 `https://skuauditpro.com` 配置，部署说明见 `deploy/README.md`。
+
 ## 页面
 
 - 免费落地页：`/`
@@ -21,17 +23,24 @@ http://127.0.0.1:4173/
 - 用户后台：`/dashboard.html`
 - 管理后台：`/admin.html`
 
-管理后台默认管理码：
+管理后台本地默认管理码：
 
 ```text
 skuprofit-admin
 ```
 
-上线时建议用环境变量修改：
+上线时请改为多管理员凭证，并开启 HTTPS 强制跳转：
 
 ```powershell
-$env:ADMIN_CODE="your-strong-admin-code"
+$env:ADMIN_USERS='[{"id":"owner","name":"Owner","code":"your-strong-admin-code"},{"id":"finance","name":"Finance","code":"another-strong-code"}]'
+$env:FORCE_HTTPS="true"
 node server.mjs
+```
+
+也可以用兼容格式：
+
+```powershell
+$env:ADMIN_CODES="owner-code,finance-code"
 ```
 
 ## 已完成能力
@@ -48,17 +57,23 @@ node server.mjs
 - 订单创建
 - 人工付款备注提交
 - 管理员审核订单并开通套餐
-- 文件型 JSON 数据库：`data/db.json`
+- 多管理员凭证
+- 管理操作审计日志
+- API 速率限制
+- SQLite 数据库：`data/skuaudit.db`
+- 旧 JSON 数据自动迁移：`data/db.json` → `data/skuaudit.db`
+- 基础安全响应头与可选 HTTPS 强制跳转
+- 邮箱验证链接
+- 忘记密码/重置密码
+- 健康检查：`/api/health`、`/api/ready`
+- `skuauditpro.com` 的 PM2 + Nginx 部署配置
 
 ## 真实上线前要补
 
-- HTTPS 域名
 - 数据库替换为 PostgreSQL / MySQL / Supabase
 - 邮箱验证码或邮件登录
 - 正式微信开放平台登录
 - 正式 Google OAuth
 - Stripe HK / Paddle / Lemon Squeezy 等真实支付
 - 支付 Webhook 自动开通套餐
-- 管理后台权限隔离
 - 隐私政策、服务条款、退款规则
-

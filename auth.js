@@ -20,6 +20,7 @@ const registerTab = document.querySelector("#register-tab");
 const nameRow = document.querySelector("#name-row");
 const submit = document.querySelector("#auth-submit");
 const message = document.querySelector("#auth-message");
+const forgotPassword = document.querySelector("#forgot-password");
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -76,6 +77,37 @@ form.addEventListener("submit", async (event) => {
     message.textContent = error.message;
   }
 });
+
+forgotPassword?.addEventListener("click", async () => {
+  const email = document.querySelector("#email").value;
+  if (!email) {
+    message.textContent = isEnglish ? "Enter your email first." : "请先输入邮箱。";
+    return;
+  }
+
+  message.textContent = authText.processing;
+  try {
+    const data = await api("/api/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+    message.innerHTML = escapeHtml(data.message || (isEnglish ? "Check your inbox." : "请查看邮箱。"));
+    if (data.resetUrl) {
+      message.innerHTML += `<br /><a href="${escapeHtml(data.resetUrl)}">${isEnglish ? "Open test reset link" : "打开测试重置链接"}</a>`;
+    }
+  } catch (error) {
+    message.textContent = error.message;
+  }
+});
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
 
 document.querySelectorAll("[data-provider]").forEach((button) => {
   button.addEventListener("click", () => {

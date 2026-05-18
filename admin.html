@@ -25,12 +25,12 @@
         <div class="section-heading">
           <p class="eyebrow">管理后台</p>
           <h1>审核订单、报价和收款。</h1>
-          <p>本地默认管理码是 <code>skuprofit-admin</code>。上线时请用环境变量 <code>ADMIN_CODE</code> 修改。</p>
+          <p>本地默认管理码是 <code>skuprofit-admin</code>。上线时请用 <code>ADMIN_USERS</code> 或 <code>ADMIN_CODES</code> 配置多管理员凭证。</p>
         </div>
         <form class="admin-login" id="admin-form">
           <label>
             管理码
-            <input id="admin-code" type="password" value="skuprofit-admin" />
+            <input id="admin-code" type="password" placeholder="Admin code" autocomplete="current-password" />
           </label>
           <button class="button primary" type="submit">加载数据</button>
         </form>
@@ -241,6 +241,27 @@
               </tr>
             </thead>
             <tbody id="admin-leads"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Audit</p>
+          <h2>Admin audit log</h2>
+          <p>Recent admin changes are recorded for payment, plan, quote, invoice and settings operations.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Action</th>
+                <th>Target</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="admin-audit-log"></tbody>
           </table>
         </div>
       </section>

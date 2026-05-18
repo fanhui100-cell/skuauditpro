@@ -62,6 +62,7 @@ async function loadBilling() {
   renderUsers(data.users || []);
   renderQuotes(data.quotes);
   renderInvoices(data.invoices);
+  renderAuditLog(data.auditLog || []);
 }
 
 function renderCompanySettings(company) {
@@ -228,6 +229,32 @@ function renderInvoices(invoices) {
       }, 1400);
     });
   });
+}
+
+function renderAuditLog(entries) {
+  const body = document.querySelector("#admin-audit-log");
+  if (!body) {
+    return;
+  }
+
+  if (!entries.length) {
+    body.innerHTML = '<tr><td colspan="4">No admin changes recorded yet.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = entries
+    .map((entry) => {
+      const target = [entry.targetType, entry.targetId].filter(Boolean).join(": ") || "-";
+      return `
+        <tr>
+          <td>${entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "-"}</td>
+          <td>${escapeHtml(entry.action)}</td>
+          <td>${escapeHtml(target)}</td>
+          <td><code>${escapeHtml(JSON.stringify(entry.details || {}))}</code></td>
+        </tr>
+      `;
+    })
+    .join("");
 }
 
 async function copyValue(value) {

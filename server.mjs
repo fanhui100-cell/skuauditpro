@@ -1,12 +1,25 @@
 ﻿import http from "node:http";
 import crypto from "node:crypto";
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
+import { isDefaultAdminConfig, resolveAdminUsers, verifyAdminCode } from "./lib/admin-auth.js";
+import {
+  appendAdminAuditLog,
+  cleanupAuthTokens,
+  consumeAuthToken,
+  createAuthToken,
+  databaseInfo,
+  initDatabase,
+  listAdminAuditLog,
+  loadAppDb,
+  migrateFromJson,
+  saveAppDb,
+} from "./lib/database.js";
+import { sendAppEmail } from "./lib/mailer.js";
+import { rateLimitMiddleware, startRateLimitCleanup } from "./lib/rate-limiter.js";
 
 const root = process.cwd();
-const dataDir = join(root, "data");
-const dbPath = join(dataDir, "db.json");
 
 function loadEnvFile() {
   const envPath = join(root, ".env");
@@ -33,7 +46,7 @@ function loadEnvFile() {
 loadEnvFile();
 
 const port = Number(process.env.PORT || 4173);
-const adminCode = process.env.ADMIN_CODE || "skuprofit-admin";
+const adminUsers = resolveAdminUsers(process.env);
 
 const plans = [
   {
@@ -119,6 +132,8 @@ const defaultCompanySettings = {
     "Please complete payment by bank transfer, FPS or the agreed manual payment method. Include the invoice number in your payment note.",
 };
 
+const productionBaseUrl = (process.env.APP_BASE_URL || "https://skuauditpro.com").replace(/\/$/, "");
+
 const types = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -128,50 +143,33 @@ const types = {
 };
 
 async function loadDb() {
-  if (!existsSync(dataDir)) {
-    await mkdir(dataDir, { recursive: true });
-  }
-
-  if (!existsSync(dbPath)) {
-    await saveDb({
-      users: [],
-      sessions: [],
-      orders: [],
-      leads: [],
-      calculations: [],
-      visitors: [],
-      quotes: [],
-      invoices: [],
-      settings: { company: defaultCompanySettings },
-    });
-  }
-
-  const db = JSON.parse(await readFile(dbPath, "utf-8"));
-  db.users ||= [];
-  db.sessions ||= [];
-  db.orders ||= [];
-  db.leads ||= [];
-  db.calculations ||= [];
-  db.visitors ||= [];
-  db.quotes ||= [];
-  db.invoices ||= [];
-  db.settings ||= {};
-  db.settings.company = { ...defaultCompanySettings, ...(db.settings.company || {}) };
-  return db;
+  return loadAppDb(defaultCompanySettings);
 }
 
 async function saveDb(db) {
-  await writeFile(dbPath, JSON.stringify(db, null, 2), "utf-8");
+  saveAppDb(db, defaultCompanySettings);
 }
 
 function sendJson(response, status, payload) {
+  applySecurityHeaders(response);
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(payload));
 }
 
 function redirect(response, location) {
+  applySecurityHeaders(response);
   response.writeHead(302, { Location: location });
   response.end();
+}
+
+function applySecurityHeaders(response) {
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setHeader("X-Frame-Options", "DENY");
+  response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  if (process.env.FORCE_HTTPS === "true" || process.env.NODE_ENV === "production") {
+    response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
 }
 
 function appendCookie(response, cookie) {
@@ -186,6 +184,16 @@ function appendCookie(response, cookie) {
 
 function publicBaseUrl(request) {
   return (process.env.APP_BASE_URL || `http://${request.headers.host}`).replace(/\/$/, "");
+}
+
+function canonicalBaseUrl() {
+  return productionBaseUrl;
+}
+
+function sendText(response, status, body, contentType = "text/plain; charset=utf-8") {
+  applySecurityHeaders(response);
+  response.writeHead(status, { "Content-Type": contentType });
+  response.end(body);
 }
 
 function preferredLanguage(request) {
@@ -261,6 +269,7 @@ function publicUser(user) {
     provider: user.provider,
     planId: user.planId || "free-3-sku",
     quota: quotaForPlan(user.planId || "free-3-sku"),
+    emailVerified: Boolean(user.emailVerified || user.provider?.includes("google")),
     onboarded: Boolean(user.onboarded),
     createdAt: user.createdAt,
   };
@@ -573,7 +582,67 @@ async function fetchGoogleProfile(accessToken) {
   return profileResponse.json();
 }
 
+async function sendVerificationEmail(request, db, account) {
+  if (!account || account.provider !== "email") return null;
+  const token = createAuthToken(account.id, "verify-email", 24 * 60 * 60 * 1000);
+  const verifyUrl = `${publicBaseUrl(request)}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+  await sendAppEmail({
+    to: account.email,
+    subject: "Verify your SKUAuditPro email",
+    text: `Please verify your SKUAuditPro email: ${verifyUrl}`,
+  });
+  await saveDb(db);
+  return verifyUrl;
+}
+
+async function sendPasswordResetEmail(request, account) {
+  const token = createAuthToken(account.id, "reset-password", 60 * 60 * 1000);
+  const resetUrl = `${publicBaseUrl(request)}/reset-password.html?token=${encodeURIComponent(token)}`;
+  await sendAppEmail({
+    to: account.email,
+    subject: "Reset your SKUAuditPro password",
+    text: `Use this link to reset your SKUAuditPro password: ${resetUrl}`,
+  });
+  return resetUrl;
+}
+
+function rateLimitCategory(request, url) {
+  if (url.pathname === "/api/auth/login") return "auth:login";
+  if (url.pathname === "/api/auth/register" || url.pathname === "/api/auth/demo-social") return "auth:register";
+  if (url.pathname === "/api/auth/forgot-password" || url.pathname === "/api/auth/reset-password") return "auth:password";
+  if (url.pathname === "/api/auth/resend-verification") return "auth:password";
+  if (url.pathname === "/api/account/password") return "auth:password";
+  if (url.pathname === "/api/audits" || url.pathname === "/api/calculations") return "api:audit";
+  if (url.pathname === "/api/leads") return "api:lead";
+  if (url.pathname.startsWith("/api/admin/")) return "admin:default";
+  return "api:default";
+}
+
+function adminFromCode(code) {
+  return verifyAdminCode(code, adminUsers);
+}
+
+function adminError(response) {
+  sendJson(response, 403, { error: "管理凭证不正确。" });
+  return null;
+}
+
+function logAdminAction(request, admin, action, targetType = "", targetId = "", details = {}) {
+  appendAdminAuditLog({
+    adminCodeHash: admin.codeHash,
+    action,
+    targetType,
+    targetId,
+    details,
+    ipAddress: requestFingerprint(request),
+  });
+}
+
 async function handleApi(request, response, url) {
+  if (!rateLimitMiddleware(request, response, rateLimitCategory(request, url))) {
+    return true;
+  }
+
   const db = await loadDb();
   const user = await currentUser(request, db);
 
@@ -581,6 +650,26 @@ async function handleApi(request, response, url) {
     sendJson(response, 200, {
       user: publicUser(user),
       usage: user ? quotaStatus(db, { userId: user.id }, user.planId || "free-3-sku") : null,
+    });
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/health") {
+    sendJson(response, 200, {
+      ok: true,
+      service: "skuauditpro",
+      time: new Date().toISOString(),
+    });
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/ready") {
+    const info = databaseInfo();
+    sendJson(response, 200, {
+      ok: true,
+      database: "sqlite",
+      dbPath: info.dbPath,
+      time: new Date().toISOString(),
     });
     return true;
   }
@@ -737,7 +826,48 @@ async function handleApi(request, response, url) {
     };
     db.users.push(newUser);
     await createSession(response, db, newUser.id);
-    sendJson(response, 201, { user: publicUser(newUser) });
+    const verifyUrl = await sendVerificationEmail(request, db, newUser);
+    sendJson(response, 201, {
+      user: publicUser(newUser),
+      verificationRequired: true,
+      ...(process.env.NODE_ENV === "production" ? {} : { verifyUrl }),
+    });
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/auth/verify-email") {
+    const consumed = consumeAuthToken(url.searchParams.get("token"), "verify-email");
+    if (!consumed) {
+      redirect(response, `/login.html?error=${encodeURIComponent("验证链接无效或已过期。")}`);
+      return true;
+    }
+
+    const matched = db.users.find((item) => item.id === consumed.userId);
+    if (matched) {
+      matched.emailVerified = true;
+      matched.emailVerifiedAt = new Date().toISOString();
+      matched.updatedAt = matched.emailVerifiedAt;
+      await saveDb(db);
+    }
+    redirect(response, `/dashboard.html?verified=1`);
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/auth/resend-verification") {
+    if (!user) {
+      sendJson(response, 401, { error: "请先登录。" });
+      return true;
+    }
+    if (user.emailVerified || user.provider !== "email") {
+      sendJson(response, 200, { ok: true, alreadyVerified: true });
+      return true;
+    }
+
+    const verifyUrl = await sendVerificationEmail(request, db, user);
+    sendJson(response, 200, {
+      ok: true,
+      ...(process.env.NODE_ENV === "production" ? {} : { verifyUrl }),
+    });
     return true;
   }
 
@@ -754,6 +884,54 @@ async function handleApi(request, response, url) {
 
     await createSession(response, db, matched.id);
     sendJson(response, 200, { user: publicUser(matched) });
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/auth/forgot-password") {
+    const body = await readBody(request);
+    const email = String(body.email || "").trim().toLowerCase();
+    const matched = db.users.find((item) => item.email === email && item.passwordHash);
+    let resetUrl = null;
+
+    if (matched) {
+      resetUrl = await sendPasswordResetEmail(request, matched);
+    }
+
+    sendJson(response, 200, {
+      ok: true,
+      message: "如果邮箱存在，我们会发送重置链接。",
+      ...(process.env.NODE_ENV === "production" || !resetUrl ? {} : { resetUrl }),
+    });
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/auth/reset-password") {
+    const body = await readBody(request);
+    const token = String(body.token || "");
+    const password = String(body.password || "");
+
+    if (password.length < 6) {
+      sendJson(response, 400, { error: "新密码至少 6 位。" });
+      return true;
+    }
+
+    const consumed = consumeAuthToken(token, "reset-password");
+    if (!consumed) {
+      sendJson(response, 400, { error: "重置链接无效或已过期。" });
+      return true;
+    }
+
+    const matched = db.users.find((item) => item.id === consumed.userId);
+    if (!matched) {
+      sendJson(response, 400, { error: "账号不存在。" });
+      return true;
+    }
+
+    matched.passwordHash = hashPassword(password);
+    matched.updatedAt = new Date().toISOString();
+    db.sessions = db.sessions.filter((session) => session.userId !== matched.id);
+    await saveDb(db);
+    sendJson(response, 200, { ok: true });
     return true;
   }
 
@@ -1180,10 +1358,8 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/admin/orders") {
-    if (url.searchParams.get("code") !== adminCode) {
-      sendJson(response, 403, { error: "管理码不正确。" });
-      return true;
-    }
+    const admin = adminFromCode(url.searchParams.get("code"));
+    if (!admin) return Boolean(adminError(response)) || true;
 
     sendJson(response, 200, {
       orders: db.orders.map((order) => ({
@@ -1196,10 +1372,8 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/admin/billing") {
-    if (url.searchParams.get("code") !== adminCode) {
-      sendJson(response, 403, { error: "管理码不正确。" });
-      return true;
-    }
+    const admin = adminFromCode(url.searchParams.get("code"));
+    if (!admin) return Boolean(adminError(response)) || true;
 
     let changed = false;
     db.invoices.forEach((invoice) => {
@@ -1236,16 +1410,23 @@ async function handleApi(request, response, url) {
       invoices: invoices.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
       overview: billingOverview(invoices),
       company: db.settings.company,
+      auditLog: listAdminAuditLog(50),
     });
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/admin/audit-log") {
+    const admin = adminFromCode(url.searchParams.get("code"));
+    if (!admin) return Boolean(adminError(response)) || true;
+
+    sendJson(response, 200, { auditLog: listAdminAuditLog(Number(url.searchParams.get("limit")) || 100) });
     return true;
   }
 
   if (request.method === "POST" && url.pathname === "/api/admin/settings/company") {
     const body = await readBody(request);
-    if (body.code !== adminCode) {
-      sendJson(response, 403, { error: "管理码不正确。" });
-      return true;
-    }
+    const admin = adminFromCode(body.code);
+    if (!admin) return Boolean(adminError(response)) || true;
 
     db.settings.company = {
       ...db.settings.company,
@@ -1259,16 +1440,18 @@ async function handleApi(request, response, url) {
         : db.settings.company.logoDataUrl,
     };
     await saveDb(db);
+    logAdminAction(request, admin, "company_settings.update", "settings", "company", {
+      companyName: db.settings.company.companyName,
+      email: db.settings.company.email,
+    });
     sendJson(response, 200, { company: db.settings.company });
     return true;
   }
 
   if (request.method === "POST" && url.pathname.match(/^\/api\/admin\/users\/[^/]+\/plan$/)) {
     const body = await readBody(request);
-    if (body.code !== adminCode) {
-      sendJson(response, 403, { error: "管理码不正确。" });
-      return true;
-    }
+    const admin = adminFromCode(body.code);
+    if (!admin) return Boolean(adminError(response)) || true;
 
     const userId = url.pathname.split("/")[4];
     const targetUser = db.users.find((item) => item.id === userId);
@@ -1281,16 +1464,18 @@ async function handleApi(request, response, url) {
     targetUser.planId = plan.id;
     targetUser.updatedAt = new Date().toISOString();
     await saveDb(db);
+    logAdminAction(request, admin, "user.plan.update", "user", targetUser.id, {
+      email: targetUser.email,
+      planId: plan.id,
+    });
     sendJson(response, 200, { user: publicUser(targetUser) });
     return true;
   }
 
   if (request.method === "POST" && url.pathname === "/api/admin/quotes") {
     const body = await readBody(request);
-    if (body.code !== adminCode) {
-      sendJson(response, 403, { error: "管理码不正确。" });
-      return true;
-    }
+    const admin = adminFromCode(body.code);
+    if (!admin) return Boolean(adminError(response)) || true;
 
     const email = String(body.customerEmail || "").trim().toLowerCase();
     const amount = Number(body.amount) || 0;
@@ -1322,16 +1507,20 @@ async function handleApi(request, response, url) {
     };
     db.quotes.push(quote);
     await saveDb(db);
+    logAdminAction(request, admin, "quote.create", "quote", quote.id, {
+      quoteNo: quote.quoteNo,
+      customerEmail: quote.customerEmail,
+      amount: quote.amount,
+      currency: quote.currency,
+    });
     sendJson(response, 201, { quote: publicQuote(quote) });
     return true;
   }
 
   if (request.method === "POST" && url.pathname.match(/^\/api\/admin\/quotes\/[^/]+\/convert$/)) {
     const body = await readBody(request);
-    if (body.code !== adminCode) {
-      sendJson(response, 403, { error: "管理码不正确。" });
-      return true;
-    }
+    const admin = adminFromCode(body.code);
+    if (!admin) return Boolean(adminError(response)) || true;
 
     const quoteId = url.pathname.split("/")[4];
     const quote = db.quotes.find((item) => item.id === quoteId);
@@ -1352,16 +1541,18 @@ async function handleApi(request, response, url) {
     quote.updatedAt = new Date().toISOString();
     db.invoices.push(invoice);
     await saveDb(db);
+    logAdminAction(request, admin, "quote.convert", "quote", quote.id, {
+      quoteNo: quote.quoteNo,
+      invoiceNo: invoice.invoiceNo,
+    });
     sendJson(response, 201, { quote: publicQuote(quote), invoice: publicInvoice(invoice) });
     return true;
   }
 
   if (request.method === "POST" && url.pathname.match(/^\/api\/admin\/invoices\/[^/]+\/status$/)) {
     const body = await readBody(request);
-    if (body.code !== adminCode) {
-      sendJson(response, 403, { error: "管理码不正确。" });
-      return true;
-    }
+    const admin = adminFromCode(body.code);
+    if (!admin) return Boolean(adminError(response)) || true;
 
     const invoiceId = url.pathname.split("/")[4];
     const invoice = db.invoices.find((item) => item.id === invoiceId);
@@ -1386,16 +1577,19 @@ async function handleApi(request, response, url) {
       }
     }
     await saveDb(db);
+    logAdminAction(request, admin, "invoice.status.update", "invoice", invoice.id, {
+      invoiceNo: invoice.invoiceNo,
+      status: invoice.status,
+      upgradedUserId: invoice.userId,
+    });
     sendJson(response, 200, { invoice: publicInvoice(invoice) });
     return true;
   }
 
   if (request.method === "POST" && url.pathname === "/api/admin/mark-paid") {
     const body = await readBody(request);
-    if (body.code !== adminCode) {
-      sendJson(response, 403, { error: "管理码不正确。" });
-      return true;
-    }
+    const admin = adminFromCode(body.code);
+    if (!admin) return Boolean(adminError(response)) || true;
 
     const order = db.orders.find((item) => item.id === body.orderId);
     if (!order) {
@@ -1410,16 +1604,18 @@ async function handleApi(request, response, url) {
       orderUser.planId = order.planId;
     }
     await saveDb(db);
+    logAdminAction(request, admin, "order.mark_paid", "order", order.id, {
+      userId: order.userId,
+      planId: order.planId,
+    });
     sendJson(response, 200, { order });
     return true;
   }
 
   if (request.method === "POST" && url.pathname === "/api/admin/leads/status") {
     const body = await readBody(request);
-    if (body.code !== adminCode) {
-      sendJson(response, 403, { error: "管理码不正确。" });
-      return true;
-    }
+    const admin = adminFromCode(body.code);
+    if (!admin) return Boolean(adminError(response)) || true;
 
     const lead = db.leads.find((item) => item.id === body.leadId);
     const allowedStatuses = ["new", "reviewing", "ready", "delivered"];
@@ -1431,6 +1627,10 @@ async function handleApi(request, response, url) {
     lead.status = body.status;
     lead.updatedAt = new Date().toISOString();
     await saveDb(db);
+    logAdminAction(request, admin, "lead.status.update", "lead", lead.id, {
+      reportId: lead.reportId,
+      status: lead.status,
+    });
     sendJson(response, 200, { lead });
     return true;
   }
@@ -1444,6 +1644,7 @@ async function sendFile(response, pathname, status = 200) {
   const resolved = resolve(filePath);
 
   if (!resolved.startsWith(resolve(root))) {
+    applySecurityHeaders(response);
     response.writeHead(403);
     response.end("Forbidden");
     return;
@@ -1451,6 +1652,7 @@ async function sendFile(response, pathname, status = 200) {
 
   try {
     const body = await readFile(resolved);
+    applySecurityHeaders(response);
     response.writeHead(status, {
       "Content-Type": types[extname(resolved)] || "application/octet-stream",
     });
@@ -1476,11 +1678,53 @@ const server = http.createServer(async (request, response) => {
   const url = new URL(request.url || "/", `http://${request.headers.host}`);
 
   try {
+    if (
+      process.env.FORCE_HTTPS === "true" &&
+      request.headers["x-forwarded-proto"] === "http" &&
+      request.headers.host
+    ) {
+      redirect(response, `https://${request.headers.host}${request.url || "/"}`);
+      return;
+    }
+
     if (url.pathname.startsWith("/api/")) {
       const handled = await handleApi(request, response, url);
       if (!handled) {
         sendJson(response, 404, { error: "API 不存在。" });
       }
+      return;
+    }
+
+    if (url.pathname === "/robots.txt") {
+      sendText(
+        response,
+        200,
+        `User-agent: *\nAllow: /\nSitemap: ${canonicalBaseUrl()}/sitemap.xml\n`,
+      );
+      return;
+    }
+
+    if (url.pathname === "/sitemap.xml") {
+      const pages = [
+        "",
+        "/en.html",
+        "/login.html",
+        "/dashboard.html",
+        "/cases.html",
+        "/help.html",
+        "/contact.html",
+        "/privacy.html",
+        "/terms.html",
+        "/security.html",
+      ];
+      sendText(
+        response,
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${pages
+          .map((page) => `  <url><loc>${canonicalBaseUrl()}${page || "/"}</loc></url>`)
+          .join("\n")}\n</urlset>\n`,
+        "application/xml; charset=utf-8",
+      );
       return;
     }
 
@@ -1520,9 +1764,20 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
+const migrated = await migrateFromJson(defaultCompanySettings);
+await initDatabase(defaultCompanySettings);
+cleanupAuthTokens();
+startRateLimitCleanup();
+
 server.listen(port, "0.0.0.0", () => {
+  if (migrated) {
+    console.log("Migrated legacy data/db.json into data/skuaudit.db");
+  }
+  if (isDefaultAdminConfig(process.env)) {
+    console.warn("WARNING: using default admin code. Set ADMIN_USERS or ADMIN_CODES before production deployment.");
+  }
   console.log(`SKUAuditPro full-stack app running at http://0.0.0.0:${port}`);
-  console.log(`Admin page: http://127.0.0.1:${port}/admin.html, code: ${adminCode}`);
+  console.log(`Admin page: http://127.0.0.1:${port}/admin.html (${adminUsers.length} admin credential${adminUsers.length === 1 ? "" : "s"})`);
 });
 
 

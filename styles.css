@@ -18,10 +18,15 @@
 }
 
 html {
+  max-width: 100%;
+  overflow-x: hidden;
   scroll-behavior: smooth;
 }
 
 body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   margin: 0;
   background:
     radial-gradient(circle at top left, rgba(13, 142, 161, 0.11), transparent 28%),
@@ -32,6 +37,13 @@ body {
     Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", Arial,
     sans-serif;
   line-height: 1.6;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
 }
 
 code {
@@ -2041,21 +2053,79 @@ tbody tr:last-child td {
   .site-header {
     align-items: flex-start;
     flex-direction: column;
+    gap: 14px;
+    padding: 12px 14px;
   }
 
   .nav-links {
+    max-width: 100%;
     width: 100%;
     overflow-x: auto;
     padding-bottom: 4px;
     white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
   }
 
   .hero {
+    width: 100%;
+    max-width: 100%;
     min-height: auto;
+    gap: 24px;
+    padding: 28px 14px 38px;
+  }
+
+  .hero-copy,
+  .calculator-panel,
+  .section-heading {
+    width: 100%;
+    max-width: none;
   }
 
   h1 {
-    font-size: 40px;
+    font-size: clamp(34px, 10.5vw, 44px);
+    line-height: 1.08;
+  }
+
+  h2 {
+    font-size: clamp(26px, 8vw, 34px);
+  }
+
+  .hero-subtitle {
+    max-width: none;
+    font-size: 16px;
+  }
+
+  .hero-tags {
+    margin-top: 18px;
+  }
+
+  .hero-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    margin: 22px 0;
+  }
+
+  .hero-actions .button {
+    width: 100%;
+  }
+
+  .hero-proof {
+    max-width: none;
+  }
+
+  .signal-strip {
+    margin-right: 14px;
+    margin-left: 14px;
+  }
+
+  .calculator-panel {
+    padding: 18px;
+    box-shadow: 0 12px 32px rgba(6, 34, 27, 0.1);
+  }
+
+  .section {
+    padding-right: 14px;
+    padding-left: 14px;
   }
 
   .form-grid,

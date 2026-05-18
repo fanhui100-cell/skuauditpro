@@ -64,7 +64,7 @@ const plans = [
     priceHkd: 32,
     interval: "month",
     popular: true,
-    features: ["每月 20 个 SKU", "批量利润排序", "隐藏亏损品清单", "达人佣金上限"],
+    features: ["每月 50 个 SKU", "批量利润排序", "隐藏亏损品清单", "达人佣金上限"],
   },
   {
     id: "store-audit",
@@ -72,7 +72,7 @@ const plans = [
     priceCny: 59,
     priceHkd: 65,
     interval: "month",
-    features: ["每月 100 个 SKU", "定价建议", "物流/关税敏感性", "月度复盘摘要"],
+    features: ["每月 200 个 SKU", "定价建议", "物流/关税敏感性", "月度复盘摘要"],
   },
   {
     id: "pro-monthly",
@@ -80,15 +80,15 @@ const plans = [
     priceCny: 99,
     priceHkd: 108,
     interval: "month",
-    features: ["每月 300 个 SKU", "SKU 利润看板", "批量 CSV 导出", "政策/费用变动记录"],
+    features: ["每月 500 个 SKU", "SKU 利润看板", "批量 CSV 导出", "政策/费用变动记录"],
   },
 ];
 
 const planQuotas = {
   "free-3-sku": 5,
-  "audit-20-sku": 20,
-  "store-audit": 100,
-  "pro-monthly": 300,
+  "audit-20-sku": 50,
+  "store-audit": 200,
+  "pro-monthly": 500,
 };
 
 const paymentMethods = [

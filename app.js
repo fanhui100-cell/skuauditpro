@@ -99,7 +99,7 @@ const text = isEnglish
       adviceCommission: "达人佣金偏高。若要保留约 12% 目标净利，佣金建议不超过",
       adviceAds: "广告成本已经接近或超过单件净利润，建议设置更严格的 CPA 上限。",
       adviceShipping: "物流和进口成本占比过高，建议测试海外仓、组合装或提高客单价。",
-      adviceBulk: "下一步可以批量上传 20 个 SKU，优先找出隐藏亏损品和可涨价品。",
+      adviceBulk: "下一步可以用月度额度持续批量体检 SKU，优先找出隐藏亏损品和可涨价品。",
       noBulk: "暂无数据，先载入示例或粘贴 CSV。",
       unnamedSku: "未命名 SKU",
       copied: "已复制",

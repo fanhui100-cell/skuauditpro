@@ -1712,6 +1712,7 @@ const server = http.createServer(async (request, response) => {
         "/en.html",
         "/login.html",
         "/dashboard.html",
+        "/checkout.html",
         "/cases.html",
         "/help.html",
         "/contact.html",

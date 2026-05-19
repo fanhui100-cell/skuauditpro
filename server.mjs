@@ -127,7 +127,7 @@ const paymentMethods = [
 const defaultCompanySettings = {
   companyName: "SKUAuditPro",
   legalName: "SKUAuditPro Advisory",
-  email: "hello@skuauditpro.com",
+  email: "fanhui100@gmail.com",
   address: "Hong Kong / Remote",
   logoDataUrl: "",
   paymentInstructions:

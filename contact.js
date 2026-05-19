@@ -34,6 +34,6 @@ form.addEventListener("submit", async (event) => {
       note.textContent = "已提交。我们会根据你留下的联系方式跟进。";
     }
   } catch {
-    note.textContent = "暂时无法提交，请稍后再试或直接发送邮件。";
+    note.textContent = "暂时无法提交，请稍后再试，或通过邮箱/微信联系我们。";
   }
 });
